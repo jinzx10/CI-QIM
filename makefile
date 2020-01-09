@@ -1,44 +1,42 @@
-ROOTDIR = $(shell pwd)
-SDIR = ${ROOTDIR}/src
-IDIR = ${ROOTDIR}/include
-ODIR = ${ROOTDIR}/obj
-BDIR = ${ROOTDIR}/bin
-
-vpath %.h ${IDIR}
-vpath %.cpp ${SDIR}
+ROOTDIR 		= $(shell pwd)
+BDIR 			= ${ROOTDIR}/bin
+IDIR 			= ${ROOTDIR}/include
+ODIR 			= ${ROOTDIR}/obj
+SDIR 			= ${ROOTDIR}/src
 
 CC 				= g++
 CPPFLAGS 		= -I${IDIR}
 LDFLAGS 		= -larmadillo
 
-OBJ0 			= fermi 
-OBJS 			= $(addsuffix .o, ${OBJ0})
+vpath %.h ${IDIR}
+vpath %.cpp ${SDIR}
 
-all 			: main test
-test 			: test_fermi test_newtonroot
+exe 			= $(addprefix test_, findmu fermi newtonroot)
 
+findmu_deps 	= fermi newtonroot
 
-main 			: ${OBJS} | ${BDIR}
-	${CC} $(addprefix ${ODIR}/, $^) -o ${BDIR}/$@ ${CPPFLAGS} ${LDFLAGS}
-test_% 			: test_%.o %.o | ${BDIR}
-	${CC} $(addprefix ${ODIR}/, $^) -o ${BDIR}/$@ ${CPPFLAGS} ${LDFLAGS}
+.PHONY: all
+all 			: $(addprefix ${BDIR}/, ${exe})
+% 				: ${BDIR}/% ;
 
+exe_objs 		= $(patsubst %, ${ODIR}/%.o, ${exe})
+genobj 			= ${ODIR}/$(1).o $(patsubst %, ${ODIR}/%.o, $(2)) 
 
-main.o 			: main.cpp | ${ODIR}
-	${CC} -c $< -o ${ODIR}/$@ ${CPPFLAGS}
+.SECONDEXPANSION:
+${BDIR}/test_%	: ${ODIR}/test_%.o $$(call genobj,%,$$($$*_deps)) | ${BDIR}
+	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
 
-test_%.o : test_%.cpp | ${ODIR}
-	${CC} -c $< -o ${ODIR}/$@ ${CPPFLAGS}
+${exe_objs} 	: ${ODIR}/%.o : %.cpp | ${ODIR}
+	${CC} -c $< -o $@ ${CPPFLAGS}
 
-%.o		: %.cpp %.h | ${ODIR}
-	${CC} -c $< -o ${ODIR}/$@ ${CPPFLAGS}
-
+${ODIR}/%.o		: %.cpp %.h | ${ODIR}
+	${CC} -c $< -o $@ ${CPPFLAGS}
 
 ${BDIR} ${ODIR} ${LDIR} :
 	mkdir -p $@
 
 
-.PRECIOUS: %.o test_%.o
+.PRECIOUS: ${ODIR}/%.o
 .PHONY: clean
 
 clean:
