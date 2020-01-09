@@ -11,8 +11,9 @@ LDFLAGS 		= -larmadillo
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
-exe 			= $(addprefix test_, findmu fermi newtonroot)
+exe 			= main $(addprefix test_, findmu fermi newtonroot)
 
+main_deps 		= fermi newtonroot findmu
 findmu_deps 	= fermi newtonroot
 
 .PHONY: all
@@ -21,6 +22,10 @@ all 			: $(addprefix ${BDIR}/, ${exe})
 
 exe_objs 		= $(patsubst %, ${ODIR}/%.o, ${exe})
 genobj 			= ${ODIR}/$(1).o $(patsubst %, ${ODIR}/%.o, $(2)) 
+
+
+${BDIR}/main 	: $(call genobj,main,${main_deps}) | ${BDIR}
+	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
 
 .SECONDEXPANSION:
 ${BDIR}/test_%	: ${ODIR}/test_%.o $$(call genobj,%,$$($$*_deps)) | ${BDIR}
