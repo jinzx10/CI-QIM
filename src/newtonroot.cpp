@@ -1,53 +1,50 @@
-#include "newtonroot.h"
+#include "../include/newtonroot.h"
 
-double newtonroot(std::function<double(double)> f, double const& x0, double const& dx, double const& tol, unsigned int const& max_step) {
+int newtonroot(std::function<double(double)> f, double& x, double const& dx, double const& tol, unsigned int const& max_step) {
 	unsigned int counter = 0;
-	double x = x0;
+	double fx = 0;
 	double J = 0;
 
 	while (counter < max_step) {
-		J = ( f(x+dx) - f(x-dx) ) / 2.0 / dx;
-		double fx = f(x);
-		x -= fx / J;
-		//std::cout << x << std::endl;
-		if ( std::abs(f(x)) < tol )
+		fx = f(x);
+		if ( std::abs(fx) < tol )
 			break;
+		J = ( f(x+dx) - fx ) / dx;
+		x -= fx / J;
 		counter += 1;
 	}
 
 	if ( counter >= max_step ) {
-		std::cout << "Newton-Raphson method fails to find the root." << std::endl;
 		return -1;
 	} else {
-		return x;
+		return 0;
 	}
 }
 
-arma::vec newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec const& x0, double const& dx, double const& tol, unsigned int const& max_step) {
+int newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec& x, double const& dx, double const& tol, unsigned int const& max_step) {
 	unsigned int counter = 0;
-	arma::vec x = x0;
+	arma::vec fx = f(x);
 	arma::uword len_x = x.size();
-	arma::uword len_f = f(x).size();
+	arma::uword len_f = fx.size();
 	arma::mat J = arma::zeros(len_f, len_x);
 
 	while (counter < max_step) {
-		J.zeros();
+		fx = f(x);
+		if ( arma::norm(fx) < tol )
+			break;
 		for (arma::uword i = 0; i != len_x; ++i) {
 			arma::vec dxi = arma::zeros(len_x);
 			dxi(i) = dx;
-			J.col(i) = ( f(x+dxi) - f(x-dxi) ) / (2.0*dx);
+			J.col(i) = ( f(x+dxi) - f(x) ) / dx;
 		}
-		x -= arma::solve(J, f(x));
-		if ( arma::norm(f(x)) < tol )
-			break;
+		x -= arma::solve(J, fx);
 		counter += 1;
 	}
 
 	if ( counter >= max_step ) {
-		std::cout << "Newton-Raphson method fails to find the root." << std::endl;
-		return arma::vec{-1};
+		return -1;
 	} else {
-		return x;
+		return 0;
 	}
 }
 

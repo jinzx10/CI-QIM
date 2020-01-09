@@ -4,7 +4,7 @@
 #include <functional>
 #include <armadillo>
 
-double newtonroot(std::function<double(double)> f, double const& x0, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50); 
-arma::vec newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec const& x0, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50);
+int newtonroot(std::function<double(double)> f, double& x, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50); 
+int newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec& x, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50);
 
 #endif
