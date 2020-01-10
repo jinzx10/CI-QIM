@@ -13,19 +13,17 @@ struct TwoPara
 			PES E_fil_,
 			arma::vec const& bath_,
 			Cpl cpl_,
-			arma::uword const& n_elec_);
+			arma::uword const& n_occ_);
 
 	PES E_mpt;
 	PES E_fil;
 	arma::vec bath;
 	Cpl cpl;
-	arma::uword n_elec;
-
+	arma::uword n_occ;
+	arma::uword n_vir;
 	arma::uword	n_bath;
 	arma::span idx_occ;
 	arma::span idx_vir;
-	arma::uword n_occ;
-	arma::uword n_vir;
 	arma::sp_mat Io;
 	arma::sp_mat Iv;
 

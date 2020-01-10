@@ -7,13 +7,12 @@ TwoPara::TwoPara( PES E_mpt_,
 			PES E_fil_,
 			vec const& bath_,
 			Cpl cpl_,
-			uword const& n_elec_):
-	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), n_elec(n_elec_)
+			uword const& n_occ_):
+	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), n_occ(n_occ_)
 {
 	n_bath = bath.n_elem;
-	idx_occ = span(0, n_elec-1);
-	idx_vir = span(n_elec, n_bath);
-	n_occ = n_elec;
+	idx_occ = span(0, n_occ-1);
+	idx_vir = span(n_occ, n_bath);
 	n_vir = n_bath + 1 - n_occ;
 
 	x = 0;

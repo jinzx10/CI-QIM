@@ -11,10 +11,11 @@ LDFLAGS 		= -larmadillo
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
-exe 			= main $(addprefix test_, findmu fermi newtonroot gauss)
+exe 			= main $(addprefix test_, findmu fermi newtonroot gauss TwoPara)
 
 main_deps 		= fermi newtonroot findmu
 findmu_deps 	= fermi newtonroot
+TwoPara_deps 	= gauss
 
 .PHONY: all
 all 			: $(addprefix ${BDIR}/, ${exe})
