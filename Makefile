@@ -13,7 +13,7 @@ vpath %.cpp ${SDIR}
 
 exe 			= main $(addprefix test_, findmu fermi newtonroot gauss TwoPara)
 
-main_deps 		= fermi newtonroot findmu
+main_deps 		= fermi newtonroot findmu gauss 
 findmu_deps 	= fermi newtonroot
 TwoPara_deps 	= gauss
 

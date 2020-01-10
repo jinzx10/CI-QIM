@@ -1,19 +1,20 @@
-#include "../include/TwoPara.h"
-#include "../include/gauss.h"
+#include <TwoPara.h>
+#include <gauss.h>
 
 using namespace arma;
 
-TwoPara::TwoPara( PES E_mpt_,
-			PES E_fil_,
-			vec const& bath_,
-			Cpl cpl_,
-			uword const& n_occ_):
+TwoPara::TwoPara(	PES				E_mpt_,
+					PES				E_fil_,
+					vec const&		bath_,
+					Cpl				cpl_,
+					uword const&	n_occ_		):
 	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), n_occ(n_occ_)
 {
 	n_bath = bath.n_elem;
 	idx_occ = span(0, n_occ-1);
 	idx_vir = span(n_occ, n_bath);
 	n_vir = n_bath + 1 - n_occ;
+	dE_bath_avg = ( bath.max() - bath.min() ) / bath.n_elem;
 
 	x = 0;
 	H = diagmat( join_cols(vec{0}, bath) );
@@ -24,9 +25,19 @@ TwoPara::TwoPara( PES E_mpt_,
 	Hv = sp_mat(n_vir-1, n_vir-1);
 }
 
-void TwoPara::solve_orb(double const& x_) {
+void TwoPara::calc(double const& x_) {
 	x = x_;
+	solve_orb();
+	std::cout << "solve_orb finished" << std::endl;
+	rotate_orb();
+	std::cout << "rotate_orb finished" << std::endl;
+	solve_cis_sub();
+	std::cout << "solve_cis_sub finished" << std::endl;
+	calc_cis_bath();
+	std::cout << "calc_cis_bath finished" << std::endl;
+}
 
+void TwoPara::solve_orb() {
 	H(0,0) = E_fil(x) - E_mpt(x);
 	H(span(1,n_bath), 0) = cpl(x); 
 	H(0, span(1,n_bath)) = H(span(1,n_bath), 0).t();
@@ -37,38 +48,30 @@ void TwoPara::solve_orb(double const& x_) {
 }
 
 void TwoPara::rotate_orb() {
-	// first rotation: separate do/dv from the occ/vir subspaces
-	vec_do = vec_H.cols(idx_occ) * vec_H(0, idx_occ).t() / std::sqrt(ev_n);
-	vec_dv = vec_H.cols(idx_vir) * vec_H(0, idx_vir).t() / std::sqrt(1.0-ev_n);
-	val_do = as_scalar( vec_do.t() * H * vec_do );
-	val_dv = as_scalar( vec_dv.t() * H * vec_dv );
-
-	mat q,r;
-	mat Q_occ = eye(n_occ, n_occ);
-	Q_occ.col(0) = vec_H(0, idx_occ).t();
-	qr_econ(q, r, Q_occ);
-	mat vec_bath_occ = vec_H(span::all, idx_occ) * q.tail_cols(n_occ-1);
-
-	mat Q_vir = eye(n_vir, n_vir);
-	Q_vir.col(0) = vec_H(0, idx_vir).t();
-	qr_econ(q, r, Q_vir);
-	mat vec_bath_vir = vec_H(span::all, idx_vir) * q.tail_cols(n_vir-1);
-
-	// second rotation: rotate bath states such that H is diagonal in bath subspaces
-	vec val;
-	eig_sym( val, q, vec_bath_occ.t() * H * vec_bath_occ );
-	vec_bath_occ *= q;
-	Ho.diag() = val;
-
-	eig_sym( val, q, vec_bath_vir.t() * H * vec_bath_vir );
-	vec_bath_vir *= q;
-	Hv.diag() = val;
-
-	H_do_occ = vec_do.t() * H * vec_bath_occ;
-	H_dv_vir = vec_dv.t() * H * vec_bath_vir;
+	subrotate(vec_H.cols(idx_occ), val_do, Ho, H_do_occ);
+	subrotate(vec_H.cols(idx_vir), val_dv, Hv, H_dv_vir);
 }
 
+void TwoPara::subrotate(subview<double> const& vec_sub, double& val_d, sp_mat& H_bath, mat& H_d_bath) {
+	uword sz = vec_sub.n_cols;
+	mat q, r;
+	vec val_bath;
 
+	// first rotation: separate the Schmidt orbital from the subspace
+	mat Q = eye(sz, sz);
+	Q.col(0) = vec_sub.row(0).t();
+	qr_econ(q,r,Q);
+
+	vec vec_d = vec_sub * q.col(0);
+	mat vec_bath = vec_sub * q.tail_cols(sz-1);
+	val_d = as_scalar( vec_d.t() * H * vec_d );
+
+	// second rotation: make H diagonal in the bath subspace
+	eig_sym( val_bath, q, vec_bath.t() * H * vec_bath );
+	vec_bath *= q;
+	H_bath.diag() = val_bath;
+	H_d_bath = vec_d.t() * H * vec_bath;
+}
 
 void TwoPara::solve_cis_sub() {
 	sp_mat H_doa_dob = Iv * (ev_H - val_do) + Hv;
@@ -87,16 +90,17 @@ void TwoPara::solve_cis_sub() {
 }
 
 void TwoPara::calc_cis_bath() {
-	E_cis_bath = kron(Iv, Io) * ev_H - kron(Iv, Ho) + kron(Hv, Io);
-	
-	sp_mat H_doa_jb = -kron( Iv, sp_mat(H_do_occ) );
-	sp_mat H_idv_jb = kron( sp_mat(H_dv_vir), Io );
-	sp_mat H_dov_jb = sp_mat( 1, (n_occ-1)*(n_vir-1) );
-
-	mat V_adi = vec_cis_sub.t() * join_cols(H_doa_jb, H_idv_jb, H_dov_jb);
-	Gamma =  2 * datum::pi * sum( square(V_adi) % 
-			gauss(val_cis_sub, E_cis_bath.t(), 5.0/(bath(1)-bath(0))), 2 );
+	E_cis_bath = vectorise( ev_H - repmat(Ho.diag(), 1, n_vir-1) + 
+			repmat( Hv.diag().t(), n_occ-1, 1) );
+	std::cout << "E_cis_bath" << std::endl;
+	mat V_adi = vec_cis_sub.t() *
+		join_cols( -kron( Iv, sp_mat(H_do_occ) ),
+					kron( sp_mat(H_dv_vir), Io ),
+					sp_mat( 1, (n_occ-1)*(n_vir-1) ) );
+	std::cout << "V_adi" << std::endl;
+	Gamma =  2.0 * datum::pi * sum( square(V_adi) % 
+			gauss( val_cis_sub, E_cis_bath.t(), 5.0*dE_bath_avg ), 1 );
+	std::cout << "Gamma" << std::endl;
 }
-
 
 

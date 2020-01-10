@@ -1,4 +1,6 @@
-#include "../include/newtonroot.h"
+#include <newtonroot.h>
+
+using namespace arma;
 
 int newtonroot(std::function<double(double)> f, double& x, double const& dx, double const& tol, unsigned int const& max_step) {
 	unsigned int counter = 0;
@@ -14,38 +16,29 @@ int newtonroot(std::function<double(double)> f, double& x, double const& dx, dou
 		counter += 1;
 	}
 
-	if ( counter >= max_step ) {
-		return -1;
-	} else {
-		return 0;
-	}
+	return ( counter >= max_step ) ? -1 : 0;
 }
 
-int newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec& x, double const& dx, double const& tol, unsigned int const& max_step) {
+int newtonroot(std::function<vec(vec)> f, vec& x, double const& dx, double const& tol, unsigned int const& max_step) {
 	unsigned int counter = 0;
-	arma::vec fx = f(x);
-	arma::uword len_x = x.size();
-	arma::uword len_f = fx.size();
-	arma::mat J = arma::zeros(len_f, len_x);
+	vec fx = f(x);
+	uword len_x = x.n_elem;
+	mat J = zeros(fx.n_elem, len_x);
 
 	while (counter < max_step) {
 		fx = f(x);
-		if ( arma::norm(fx) < tol )
+		if ( norm(fx) < tol )
 			break;
-		for (arma::uword i = 0; i != len_x; ++i) {
-			arma::vec dxi = arma::zeros(len_x);
+		for (uword i = 0; i != len_x; ++i) {
+			vec dxi = zeros(len_x);
 			dxi(i) = dx;
-			J.col(i) = ( f(x+dxi) - f(x) ) / dx;
+			J.col(i) = ( f(x+dxi) - fx ) / dx;
 		}
-		x -= arma::solve(J, fx);
+		x -= solve(J, fx);
 		counter += 1;
 	}
 
-	if ( counter >= max_step ) {
-		return -1;
-	} else {
-		return 0;
-	}
+	return ( counter >= max_step ) ? -1 : 0;
 }
 
 

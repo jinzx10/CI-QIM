@@ -1,7 +1,8 @@
-#include "../include/TwoPara.h"
-#include <functional>
+#include <TwoPara.h>
+#include <chrono>
 
 using namespace arma;
+using iclock = std::chrono::high_resolution_clock;
 
 int main() {
 	double x0_mpt = 2;
@@ -29,7 +30,23 @@ int main() {
 
 	uword n_occ = n_bath / 2;
 
+	uword nx = 100;
+	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
+
+	iclock::time_point start;
+	std::chrono::duration<double> dur;
+
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
 
+	start = iclock::now();
+	model.calc(xgrid(0));
+	dur = iclock::now() - start;
+
+	std::cout << "time elapsed = " << dur.count() << std::endl;
+
+	std::cout << "ev_H = " << model.ev_H << std::endl;
+	std::cout << "ev_n = " << model.ev_n << std::endl;
+
+	
 	return 0;
 }
