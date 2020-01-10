@@ -26,6 +26,8 @@ struct TwoPara
 	arma::span idx_vir;
 	arma::uword n_occ;
 	arma::uword n_vir;
+	arma::sp_mat Io;
+	arma::sp_mat Iv;
 
 	void solve_orb(double const& x);
 	double x;
@@ -35,16 +37,15 @@ struct TwoPara
 	double ev_n;
 	double ev_H;
 
-	void first_rotate(); // separate do/dv from the occ/vir subspaces
-	void second_rotate(); // rotate bath states such that H is diagonal in bath subspaces
+	void rotate_orb();
 	arma::vec vec_do;
 	arma::vec vec_dv;
 	double val_do;
 	double val_dv;
-	arma::mat vec_bath_occ;
-	arma::mat vec_bath_vir;
-	arma::vec val_bath_occ;
-	arma::vec val_bath_vir;
+	arma::sp_mat Ho;
+	arma::sp_mat Hv;
+	arma::mat H_do_occ;
+	arma::mat H_dv_vir;
 
 	void solve_cis_sub();
 	arma::vec val_cis_sub;
@@ -53,12 +54,6 @@ struct TwoPara
 	void calc_cis_bath();
 	arma::vec E_cis_bath;
 	arma::vec Gamma;
-
-
-	arma::sp_mat V_sub_bath();
-	arma::sp_mat H_doa_jb;
-	arma::sp_mat H_idv_jb;
-	arma::sp_mat H_dov_jb;
 
 };
 

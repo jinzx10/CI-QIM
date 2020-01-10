@@ -4,14 +4,14 @@ IDIR 			= ${ROOTDIR}/include
 ODIR 			= ${ROOTDIR}/obj
 SDIR 			= ${ROOTDIR}/src
 
-CC 				= g++
+CC 				= mpicxx
 CPPFLAGS 		= -I${IDIR}
 LDFLAGS 		= -larmadillo
 
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
-exe 			= main $(addprefix test_, findmu fermi newtonroot)
+exe 			= main $(addprefix test_, findmu fermi newtonroot gauss)
 
 main_deps 		= fermi newtonroot findmu
 findmu_deps 	= fermi newtonroot
