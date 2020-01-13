@@ -1,10 +1,22 @@
 #include <TwoPara.h>
 #include <chrono>
+#include <mpi.h>
+#include <cstdlib>
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;
 
 int main() {
+
+	int id, nprocs;
+	int num_trajs = 960;
+	std::string datadir = "/home/zuxin/job/cme/data/20191114/";
+	std::string cmd;
+	const char* system_cmd = nullptr;
+
+	::MPI_Init(nullptr, nullptr);
+	::MPI_Comm_rank(MPI_COMM_WORLD, &id);
+	::MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	double x0_mpt = 2;
 	double x0_fil = 2.3;
 	double omega= 0.002;
@@ -44,9 +56,7 @@ int main() {
 
 	std::cout << "time elapsed = " << dur.count() << std::endl;
 
-	std::cout << "ev_H = " << model.ev_H << std::endl;
-	std::cout << "ev_n = " << model.ev_n << std::endl;
-
+	model.Gamma.save("test_TwoPara.txt", arma::raw_ascii);
 	
 	return 0;
 }

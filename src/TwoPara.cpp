@@ -1,5 +1,9 @@
 #include <TwoPara.h>
 #include <gauss.h>
+#include <chrono>
+#include <join.h>
+
+using iclock = std::chrono::high_resolution_clock;
 
 using namespace arma;
 
@@ -14,7 +18,7 @@ TwoPara::TwoPara(	PES				E_mpt_,
 	idx_occ = span(0, n_occ-1);
 	idx_vir = span(n_occ, n_bath);
 	n_vir = n_bath + 1 - n_occ;
-	dE_bath_avg = ( bath.max() - bath.min() ) / bath.n_elem;
+	dE_bath_avg = ( bath.max() - bath.min() ) / (bath.n_elem - 1);
 
 	x = 0;
 	H = diagmat( join_cols(vec{0}, bath) );
@@ -28,13 +32,9 @@ TwoPara::TwoPara(	PES				E_mpt_,
 void TwoPara::calc(double const& x_) {
 	x = x_;
 	solve_orb();
-	std::cout << "solve_orb finished" << std::endl;
 	rotate_orb();
-	std::cout << "rotate_orb finished" << std::endl;
 	solve_cis_sub();
-	std::cout << "solve_cis_sub finished" << std::endl;
 	calc_cis_bath();
-	std::cout << "calc_cis_bath finished" << std::endl;
 }
 
 void TwoPara::solve_orb() {
@@ -81,10 +81,10 @@ void TwoPara::solve_cis_sub() {
 	sp_mat H_idv_dov = conv_to<sp_mat>::from( -H_do_occ.t() );
 	sp_mat H_dov_dov = conv_to<sp_mat>::from( vec{ev_H - val_do + val_dv} );
 
-	sp_mat H_cis_sub = join_cols(
-			join_rows( H_doa_dob,     H_doa_jdv,     H_doa_dov ),
-			join_rows( H_doa_jdv.t(), H_idv_jdv,     H_idv_dov ),
-			join_rows( H_doa_dov.t(), H_idv_dov.t(), H_dov_dov ) );
+	sp_mat H_cis_sub = join<sp_mat>( {
+			{ H_doa_dob,     H_doa_jdv,     H_doa_dov },
+			{ H_doa_jdv.t(), H_idv_jdv,     H_idv_dov },
+			{ H_doa_dov.t(), H_idv_dov.t(), H_dov_dov } } );
 
 	eig_sym( val_cis_sub, vec_cis_sub, conv_to<mat>::from(H_cis_sub) );
 }
@@ -92,15 +92,12 @@ void TwoPara::solve_cis_sub() {
 void TwoPara::calc_cis_bath() {
 	E_cis_bath = vectorise( ev_H - repmat(Ho.diag(), 1, n_vir-1) + 
 			repmat( Hv.diag().t(), n_occ-1, 1) );
-	std::cout << "E_cis_bath" << std::endl;
 	mat V_adi = vec_cis_sub.t() *
 		join_cols( -kron( Iv, sp_mat(H_do_occ) ),
 					kron( sp_mat(H_dv_vir), Io ),
 					sp_mat( 1, (n_occ-1)*(n_vir-1) ) );
-	std::cout << "V_adi" << std::endl;
-	Gamma =  2.0 * datum::pi * sum( square(V_adi) % 
-			gauss( val_cis_sub, E_cis_bath.t(), 5.0*dE_bath_avg ), 1 );
-	std::cout << "Gamma" << std::endl;
+	mat delta = gauss( val_cis_sub, E_cis_bath.as_row(), 5.0*dE_bath_avg );
+	Gamma =  2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
 }
 
 
