@@ -1,8 +1,8 @@
-#define dx 1e-6
 #include <TwoPara.h>
 #include <gauss.h>
 #include <chrono>
 #include <join.h>
+#define dx 1e-6
 
 using iclock = std::chrono::high_resolution_clock;
 
@@ -93,7 +93,7 @@ void TwoPara::calc_Gamma() {
 
 arma::mat TwoPara::H_(double const& x_) {
 	arma::mat h = diagmat( join_cols( vec{E_fil(x_) - E_mpt(x_)}, bath ) );
-	h(span(1,n_bath), 0) = cpl(x); 
+	h(span(1,n_bath), 0) = cpl(x_); 
 	h(0, span(1,n_bath)) = h(span(1,n_bath), 0).t();
 	return h;
 }
@@ -109,7 +109,7 @@ double TwoPara::force_(unsigned int const& state_) {
 
 double TwoPara::force_(double const& x_, unsigned int const& state_) {
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x);
+	model_.set_and_calc_cis_sub(x_);
 	return model_.force_(state_);
 }
 
