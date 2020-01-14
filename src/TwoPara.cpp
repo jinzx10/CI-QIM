@@ -99,9 +99,9 @@ void TwoPara::calc_val_cis_bath() {
 
 void TwoPara::calc_Gamma() {
 	mat V_adi = vec_cis_sub.t() *
-		join_cols( -kron( speye(n_vir-1, n_vir-1), sp_mat(H_do_occ) ),
-					kron( sp_mat(H_dv_vir), speye(n_occ-1, n_occ-1) ),
-					sp_mat( 1, (n_occ-1)*(n_vir-1) ) );
+		join<sp_mat>( { { -kron( speye(n_vir-1, n_vir-1), sp_mat(H_do_occ) ) },
+						{ kron( sp_mat(H_dv_vir), speye(n_occ-1, n_occ-1) ) },
+						{ sp_mat( 1, (n_occ-1)*(n_vir-1) ) } } );
 	mat delta = gauss( val_cis_sub, val_cis_bath.as_row(), 5.0*dE_bath_avg );
 	Gamma =  2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
 }
