@@ -1,4 +1,5 @@
 #include <FSSH.h>
+#define dx 1e-6
 
 using namespace arma;
 
@@ -32,11 +33,19 @@ void FSSH::initialize(bool const& state0, double const& x0, double const& v0, ar
 	collect();
 }
 
-void FSSH::evolve_elec() {
-	double a = ;
+void FSSH::evolve_nucl() {
+	double a = model->force_(x,state) / mass;
 	x += v * dtc + 0.5 * a * dtc * dtc;
-	double a_new = ;
+	double a_new = model->force_(x,state) / mass;
 	v += 0.5 * (a + a_new) * dtc;
+}
+
+void FSSH::evolve_elec() {
+
+}
+
+void FSSH::hop() {
+
 }
 
 void FSSH::collect() {
@@ -48,7 +57,7 @@ void FSSH::collect() {
 void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
 		evolve_nucl();
-		calc_T();
+		calc_dc();
 		for (unsigned int i = 0; i != rcq; ++i) {
 			evolve_elec();
 			if (!has_hop)

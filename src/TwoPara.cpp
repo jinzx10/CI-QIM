@@ -1,3 +1,4 @@
+#define dx 1e-6
 #include <TwoPara.h>
 #include <gauss.h>
 #include <chrono>
@@ -29,13 +30,20 @@ TwoPara::TwoPara(	PES				E_mpt_,
 	Hv = sp_mat(n_vir-1, n_vir-1);
 }
 
-void TwoPara::calc(double const& x_) {
+void TwoPara::set_and_calc(double const& x_) {
 	x = x_;
 	solve_orb();
 	rotate_orb();
 	solve_cis_sub();
-	calc_E_cis_bath();
+	calc_val_cis_bath();
 	calc_Gamma();
+}
+
+void TwoPara::set_and_calc_cis_sub(double const& x_) {
+	x = x_;
+	solve_orb();
+	rotate_orb();
+	solve_cis_sub();
 }
 
 void TwoPara::solve_orb() {
@@ -49,29 +57,8 @@ void TwoPara::solve_orb() {
 }
 
 void TwoPara::rotate_orb() {
-	subrotate(vec_H.cols(idx_occ), val_do, Ho, H_do_occ);
-	subrotate(vec_H.cols(idx_vir), val_dv, Hv, H_dv_vir);
-}
-
-void TwoPara::subrotate(subview<double> const& vec_sub, double& val_d, sp_mat& H_bath, mat& H_d_bath) {
-	uword sz = vec_sub.n_cols;
-	mat q, r;
-	vec val_bath;
-
-	// first rotation: separate the Schmidt orbital from the subspace
-	mat Q = eye(sz, sz);
-	Q.col(0) = vec_sub.row(0).t();
-	qr_econ(q,r,Q);
-
-	vec vec_d = vec_sub * q.col(0);
-	mat vec_bath = vec_sub * q.tail_cols(sz-1);
-	val_d = as_scalar( vec_d.t() * H * vec_d );
-
-	// second rotation: make H diagonal in the bath subspace
-	eig_sym( val_bath, q, vec_bath.t() * H * vec_bath );
-	vec_bath *= q;
-	H_bath.diag() = val_bath;
-	H_d_bath = vec_d.t() * H * vec_bath;
+	subrotate(vec_H.cols(idx_occ), H, val_do, Ho, H_do_occ);
+	subrotate(vec_H.cols(idx_vir), H, val_dv, Hv, H_dv_vir);
 }
 
 void TwoPara::solve_cis_sub() {
@@ -90,8 +77,8 @@ void TwoPara::solve_cis_sub() {
 	eig_sym( val_cis_sub, vec_cis_sub, conv_to<mat>::from(H_cis_sub) );
 }
 
-void TwoPara::calc_E_cis_bath() {
-	E_cis_bath = vectorise( ev_H - repmat(Ho.diag(), 1, n_vir-1) + 
+void TwoPara::calc_val_cis_bath() {
+	val_cis_bath = vectorise( ev_H - repmat(Ho.diag(), 1, n_vir-1) + 
 			repmat( Hv.diag().t(), n_occ-1, 1) );
 }
 
@@ -100,8 +87,52 @@ void TwoPara::calc_Gamma() {
 		join_cols( -kron( Iv, sp_mat(H_do_occ) ),
 					kron( sp_mat(H_dv_vir), Io ),
 					sp_mat( 1, (n_occ-1)*(n_vir-1) ) );
-	mat delta = gauss( val_cis_sub, E_cis_bath.as_row(), 5.0*dE_bath_avg );
+	mat delta = gauss( val_cis_sub, val_cis_bath.as_row(), 5.0*dE_bath_avg );
 	Gamma =  2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
+}
+
+arma::mat TwoPara::H_(double const& x_) {
+	arma::mat h = diagmat( join_cols( vec{E_fil(x_) - E_mpt(x_)}, bath ) );
+	h(span(1,n_bath), 0) = cpl(x); 
+	h(0, span(1,n_bath)) = h(span(1,n_bath), 0).t();
+	return h;
+}
+
+double TwoPara::force_(unsigned int const& state_) {
+	if (state_ == 0)
+		return - ( accu( eig_sym(H_(x+dx))(idx_occ) ) - ev_H ) / dx;
+
+	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
+	model_.set_and_calc_cis_sub(x+dx);
+	return - ( model_.val_cis_sub(state_-1) - val_cis_sub(state_-1) ) / dx;
+}
+
+double TwoPara::force_(double const& x_, unsigned int const& state_) {
+	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
+	model_.set_and_calc_cis_sub(x);
+	return model_.force_(state_);
+}
+
+void subrotate(mat const& vec_sub, mat const& H, double& val_d, sp_mat& H_bath, mat& H_d_bath) {
+	uword sz = vec_sub.n_cols;
+	mat q, r;
+	vec val_bath;
+
+	// first rotation: separate the Schmidt orbital from the subspace
+	mat Q = eye(sz, sz);
+	Q.col(0) = vec_sub.row(0).t();
+	qr_econ(q,r,Q);
+
+	vec vec_d = vec_sub * q.col(0);
+	mat vec_bath = vec_sub * q.tail_cols(sz-1);
+	val_d = as_scalar( vec_d.t() * H * vec_d );
+
+	// second rotation: make H diagonal in the bath subspace
+	eig_sym( val_bath, q, vec_bath.t() * H * vec_bath );
+	vec_bath *= q;
+	H_bath.zeros();
+	H_bath.diag() = val_bath;
+	H_d_bath = vec_d.t() * H * vec_bath;
 }
 
 

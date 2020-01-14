@@ -18,15 +18,14 @@ struct FSSH
 	void initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
 	void propagate();
 
-	void solve();
 	void evolve_nucl(); // Velocity Verlet
-	void calc_T();
+	void calc_dc();
 	void evolve_elec(); // Runge-Kutta
 	void hop();
 	void collect();
 
 
-	TwoPara*		model;
+	TwoPara* model;
 	double mass;
 	double dtc;
 	double dtq;
@@ -35,11 +34,12 @@ struct FSSH
 	double kT;
 	double gamma;
 
-	arma::uword state;
+	unsigned int state;
 	double x;
 	double v;
 	arma::cx_mat rho;
 	unsigned int counter;
+	arma::cx_mat dc;
 
 	bool has_hop;
 

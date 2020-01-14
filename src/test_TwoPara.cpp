@@ -19,6 +19,7 @@ int main() {
 	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/";
 	std::string cmd;
 	const char* system_cmd = nullptr;
+	int status;
 
 	////////////////////////////////////////////////////////////
 	//				Two-Parabola model
@@ -96,7 +97,7 @@ int main() {
 	if (id == 0) {
 		cmd = "mkdir -p " + datadir;
 		system_cmd = cmd.c_str();
-		std::system(system_cmd);
+		status = std::system(system_cmd);
 
 		xgrid.save(datadir+"xgrid.txt", arma::raw_ascii);
 		Gamma.save(datadir+"Gamma.txt", arma::raw_ascii);
@@ -104,7 +105,6 @@ int main() {
 		V0.save(datadir+"V0.txt", arma::raw_ascii);
 		Eg.save(datadir+"Eg.txt", arma::raw_ascii);
 		n_imp.save(datadir+"n_imp.txt", arma::raw_ascii);
-
 
 		dur = iclock::now() - start;
 		std::cout << "time elapsed = " << dur.count() << std::endl;
