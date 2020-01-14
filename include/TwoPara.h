@@ -24,8 +24,6 @@ struct TwoPara
 	arma::uword			n_bath;
 	arma::span			idx_occ;
 	arma::span 			idx_vir;
-	arma::sp_mat		Io;
-	arma::sp_mat 		Iv;
 	double				dE_bath_avg;
 
 	void				set_and_calc(double const& x);
@@ -40,6 +38,7 @@ struct TwoPara
 	double 				ev_H;
 
 	void				rotate_orb();
+	static void			subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::sp_mat& H_bath, arma::mat& H_d_bath);
 	double				val_do;
 	double 				val_dv;
 	arma::sp_mat		Ho;
@@ -59,9 +58,9 @@ struct TwoPara
 	// calculate without changing contents in the class
 	arma::mat			H_(double const& x_);
 	double				force_(unsigned int const& state_);
+	arma::vec			force_();
 	double				force_(double const& x_, unsigned int const& state_);
 };
 
-void subrotate(arma::subview<double> const& vec_sub, arma::mat const& H, double& val_d, arma::sp_mat& H_bath, arma::mat& H_d_bath);
 
 #endif
