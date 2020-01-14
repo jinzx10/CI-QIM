@@ -51,7 +51,8 @@ struct TwoPara
 	arma::vec			val_cis_sub;
 	arma::mat 			vec_cis_sub;
 
-	void				calc_cis_bath();
+	void				calc_E_cis_bath();
+	void				calc_Gamma();
 	arma::vec			E_cis_bath;
 	arma::vec 			Gamma;
 };

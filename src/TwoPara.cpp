@@ -34,7 +34,8 @@ void TwoPara::calc(double const& x_) {
 	solve_orb();
 	rotate_orb();
 	solve_cis_sub();
-	calc_cis_bath();
+	calc_E_cis_bath();
+	calc_Gamma();
 }
 
 void TwoPara::solve_orb() {
@@ -89,9 +90,12 @@ void TwoPara::solve_cis_sub() {
 	eig_sym( val_cis_sub, vec_cis_sub, conv_to<mat>::from(H_cis_sub) );
 }
 
-void TwoPara::calc_cis_bath() {
+void TwoPara::calc_E_cis_bath() {
 	E_cis_bath = vectorise( ev_H - repmat(Ho.diag(), 1, n_vir-1) + 
 			repmat( Hv.diag().t(), n_occ-1, 1) );
+}
+
+void TwoPara::calc_Gamma() {
 	mat V_adi = vec_cis_sub.t() *
 		join_cols( -kron( Iv, sp_mat(H_do_occ) ),
 					kron( sp_mat(H_dv_vir), Io ),
