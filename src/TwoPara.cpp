@@ -15,6 +15,7 @@ TwoPara::TwoPara(	PES				E_mpt_,
 	idx_occ = span(0, n_occ-1);
 	idx_vir = span(n_occ, n_bath);
 	n_vir = n_bath + 1 - n_occ;
+	sz_sub = n_occ + n_vir; // size of the CIS subspace plus the ground state
 	dE_bath_avg = ( bath.max() - bath.min() ) / (bath.n_elem - 1);
 
 	x = 0;
@@ -47,11 +48,11 @@ void TwoPara::solve_orb() {
 }
 
 void TwoPara::rotate_orb() {
-	subrotate(vec_H.cols(idx_occ), H, val_do, Ho, H_do_occ);
-	subrotate(vec_H.cols(idx_vir), H, val_dv, Hv, H_dv_vir);
+	subrotate(vec_H.cols(idx_occ), H, val_do, vec_do, vec_occ, Ho, H_do_occ);
+	subrotate(vec_H.cols(idx_vir), H, val_dv, vec_dv, vec_vir, Hv, H_dv_vir);
 }
 
-void TwoPara::subrotate(mat const& vec_sub, mat const& H_, double& val_d, sp_mat& H_bath, mat& H_d_bath) {
+void TwoPara::subrotate(mat const& vec_sub, mat const& H_, double& val_d, vec& vec_d, mat& vec_other, sp_mat& H_bath, mat& H_d_bath) {
 	uword sz = vec_sub.n_cols;
 	mat q, r;
 	vec val_bath;
@@ -61,16 +62,16 @@ void TwoPara::subrotate(mat const& vec_sub, mat const& H_, double& val_d, sp_mat
 	Q.col(0) = vec_sub.row(0).t();
 	qr_econ(q,r,Q);
 
-	vec vec_d = vec_sub * q.col(0);
-	mat vec_bath = vec_sub * q.tail_cols(sz-1);
+	vec_d = vec_sub * q.col(0);
+	vec_other = vec_sub * q.tail_cols(sz-1);
 	val_d = as_scalar( vec_d.t() * H_ * vec_d );
 
 	// second rotation: make H diagonal in the bath subspace
-	eig_sym( val_bath, q, vec_bath.t() * H_ * vec_bath );
-	vec_bath *= q;
+	eig_sym( val_bath, q, vec_other.t() * H_ * vec_other);
+	vec_other *= q;
 	H_bath.zeros();
 	H_bath.diag() = val_bath;
-	H_d_bath = vec_d.t() * H_ * vec_bath;
+	H_d_bath = vec_d.t() * H_ * vec_other;
 }
 
 void TwoPara::solve_cis_sub() {
@@ -123,13 +124,13 @@ double TwoPara::force_(unsigned int const& state_) {
 }
 
 vec TwoPara::force_() {
-	double dx = 1e-6;
-	vec f = zeros(n_occ+n_vir);
+	double dx = 1e-4;
+	vec f = zeros(sz_sub);
 	f(0) = force_(0);
 
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
 	model_.set_and_calc_cis_sub(x+dx);
-	f.tail(n_occ+n_vir-1) = - ( model_.val_cis_sub - val_cis_sub ) / dx;
+	f.tail(sz_sub-1) = - ( model_.val_cis_sub - val_cis_sub ) / dx;
 	
 	return f;
 }
@@ -140,4 +141,52 @@ double TwoPara::force_(double const& x_, unsigned int const& state_) {
 	return model_.force_(state_);
 }
 
+mat TwoPara::vec_all_rot() {
+	return join_r<mat>({vec_do, vec_occ, vec_dv, vec_vir});
+}
 
+// the next four functions return occupied orbital indices for subspace 
+// basis functions (with respect to the order specified by vec_all_rot())
+uvec TwoPara::idx_gnd() {
+	return regspace<uvec>(0, n_occ-1);
+}
+
+uvec TwoPara::idx_doa(uword const& a) {
+	return join_cols( uvec{n_occ+1+a}, regspace<uvec>(1, n_occ-1) );
+}
+
+uvec TwoPara::idx_idv(uword const& i) {
+	uvec idx = regspace<uvec>(0, n_occ-1);
+	idx(i+1) = n_occ;
+	return idx;
+}
+
+uvec TwoPara::idx_dov() {
+	return join_cols( uvec{n_occ}, regspace<uvec>(1, n_occ-1) );
+}
+
+// for a row/column index in subspace, return the occupied indices
+uvec TwoPara::idx(uword const& n) {
+	if (n == 0)
+		return idx_gnd();
+	if (n == sz_sub-1)
+		return idx_dov();
+	if (n < n_vir)
+		return idx_doa(n-1);
+	return idx_idv(n-n_vir);
+}
+
+cx_mat TwoPara::dc_() {
+	double dx = 1e-4;
+	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
+	model_.set_and_calc_cis_sub(x+dx);
+	mat orb_overlap = vec_all_rot().t() * model_.vec_all_rot();
+
+	mat overlap = zeros(sz_sub, sz_sub);
+
+	for (uword row = 0; row != sz_sub; ++row)
+		for (uword col = 0; col != sz_sub; ++col)
+			overlap(row, col) = det( orb_overlap(idx(row), idx(col)) );
+
+	return arma::logmat( vec_cis_sub.t() * overlap * model_.vec_cis_sub ) / dx;
+}

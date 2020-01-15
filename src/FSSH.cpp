@@ -40,6 +40,10 @@ void FSSH::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 }
 
+void FSSH::calc_dc() {
+
+}
+
 void FSSH::evolve_elec() {
 
 }

@@ -22,6 +22,7 @@ struct TwoPara
 	arma::uword			n_occ;
 	arma::uword 		n_vir;
 	arma::uword			n_bath;
+	arma::uword			sz_sub;
 	arma::span			idx_occ;
 	arma::span 			idx_vir;
 	double				dE_bath_avg;
@@ -38,13 +39,26 @@ struct TwoPara
 	double 				ev_H;
 
 	void				rotate_orb();
-	void				subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::sp_mat& H_bath, arma::mat& H_d_bath);
+	void				subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::vec& vec_d, arma::mat& vec_other, arma::sp_mat& H_bath, arma::mat& H_d_bath);
 	double				val_do;
 	double 				val_dv;
 	arma::sp_mat		Ho;
 	arma::sp_mat 		Hv;
 	arma::mat			H_do_occ;
 	arma::mat 			H_dv_vir;
+
+	// rotated vectors, used to calculate derivative coupling
+	arma::vec			vec_do;
+	arma::vec			vec_dv;
+	arma::mat			vec_occ;
+	arma::mat			vec_vir;
+
+	arma::mat			vec_all_rot();
+	arma::uvec			idx_gnd();
+	arma::uvec			idx_doa(arma::uword const& a);
+	arma::uvec			idx_idv(arma::uword const& i);
+	arma::uvec			idx_dov();
+	arma::uvec			idx(arma::uword const& n);
 
 	void				solve_cis_sub();
 	arma::vec			val_cis_sub;
@@ -60,6 +74,7 @@ struct TwoPara
 	double				force_(unsigned int const& state_);
 	arma::vec			force_();
 	double				force_(double const& x_, unsigned int const& state_);
+	arma::cx_mat		dc_();
 };
 
 

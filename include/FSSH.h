@@ -39,6 +39,9 @@ struct FSSH
 	double v;
 	arma::cx_mat rho;
 	unsigned int counter;
+
+	arma::vec vec_do;
+	arma::vec vec_dv;
 	arma::cx_mat dc;
 
 	bool has_hop;

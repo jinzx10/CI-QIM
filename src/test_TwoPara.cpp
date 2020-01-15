@@ -104,6 +104,7 @@ int main() {
 	::MPI_Barrier(MPI_COMM_WORLD);
 
 	if (id == 0) {
+#ifndef NO_WRITE
 		cmd = "mkdir -p " + datadir;
 		system_cmd = cmd.c_str();
 		status = std::system(system_cmd);
@@ -115,6 +116,7 @@ int main() {
 		V0.save(datadir+"V0.txt", arma::raw_ascii);
 		Eg.save(datadir+"Eg.txt", arma::raw_ascii);
 		n_imp.save(datadir+"n_imp.txt", arma::raw_ascii);
+#endif
 
 		dur = iclock::now() - start;
 		std::cout << "time elapsed = " << dur.count() << std::endl;
