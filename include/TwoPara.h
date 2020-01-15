@@ -38,7 +38,7 @@ struct TwoPara
 	double 				ev_H;
 
 	void				rotate_orb();
-	static void			subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::sp_mat& H_bath, arma::mat& H_d_bath);
+	void				subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::sp_mat& H_bath, arma::mat& H_d_bath);
 	double				val_do;
 	double 				val_dv;
 	arma::sp_mat		Ho;

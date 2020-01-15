@@ -22,23 +22,23 @@ int main() {
 	int status;
 
 	////////////////////////////////////////////////////////////
-	//				Two-Parabola model
+	//					Two-Parabola model
 	////////////////////////////////////////////////////////////
 	double x0_mpt = 2;
 	double x0_fil = 2.3;
-	double omega= 0.002;
+	double omega = 0.002;
 	double mass = 14000;
 	double dE_fil = 0.0000;
 	
-	auto E_mpt = [&](double const& x) { return 0.5 * mass * omega* omega* 
+	auto E_mpt = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_mpt) * (x - x0_mpt);};
-	auto E_fil = [&](double const& x) { return 0.5 * mass * omega* omega* 
+	auto E_fil = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_fil) * (x - x0_fil) + dE_fil;};
 
 	double W = 0.05;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 800;
+	uword n_bath = 600;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	double dos = 1.0 / (bath(1) - bath(0));
 
@@ -51,7 +51,7 @@ int main() {
 		return ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 	};
 
-	uword nx = 2;
+	uword nx = 96;
 	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
 	int local_nx = nx / nprocs;
 
@@ -62,7 +62,7 @@ int main() {
 	// local
 	mat local_Gamma = zeros(sz_sub, local_nx);
 	mat local_val_cis_sub = zeros(sz_sub, local_nx);
-//	mat local_force = zeros(sz_sub+1, local_nx);
+	mat local_force = zeros(sz_sub+1, local_nx);
 	vec local_Eg = zeros(local_nx);
 	vec local_n_imp = zeros(local_nx);
 	vec local_V0 = zeros(local_nx);
@@ -70,7 +70,7 @@ int main() {
 	if (id == 0) {
 		Gamma.zeros(sz_sub, nx);
 		val_cis_sub.zeros(sz_sub, nx);
-//		force.zeros(sz_sub+1, nx);
+		force.zeros(sz_sub+1, nx);
 		Eg.zeros(nx);
 		V0.zeros(nx);
 		n_imp.zeros(nx);
@@ -89,13 +89,13 @@ int main() {
 		local_V0(i) = E_mpt(x);
 		local_Eg(i) = model.ev_H;
 		local_n_imp(i) = model.ev_n;
-		//local_force.col(i) = model.force_();
+		local_force.col(i) = model.force_();
 
 		std::cout << id*local_nx+i+1 << "/" << nx << " finished" << std::endl;
 	}
 
 	::MPI_Gather(local_val_cis_sub.memptr(), local_val_cis_sub.n_elem, MPI_DOUBLE, val_cis_sub.memptr(), local_val_cis_sub.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-//	::MPI_Gather(local_force.memptr(), local_force.n_elem, MPI_DOUBLE, force.memptr(), local_force.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	::MPI_Gather(local_force.memptr(), local_force.n_elem, MPI_DOUBLE, force.memptr(), local_force.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	::MPI_Gather(local_Gamma.memptr(), local_Gamma.n_elem, MPI_DOUBLE, Gamma.memptr(), local_Gamma.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	::MPI_Gather(local_V0.memptr(), local_V0.n_elem, MPI_DOUBLE, V0.memptr(), local_V0.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	::MPI_Gather(local_Eg.memptr(), local_Eg.n_elem, MPI_DOUBLE, Eg.memptr(), local_Eg.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -106,12 +106,12 @@ int main() {
 	if (id == 0) {
 		cmd = "mkdir -p " + datadir;
 		system_cmd = cmd.c_str();
-		//status = std::system(system_cmd);
+		status = std::system(system_cmd);
 
 		xgrid.save(datadir+"xgrid.txt", arma::raw_ascii);
 		Gamma.save(datadir+"Gamma.txt", arma::raw_ascii);
 		val_cis_sub.save(datadir+"val_cis_sub.txt", arma::raw_ascii);
-//		force.save(datadir+"force.txt", arma::raw_ascii);
+		force.save(datadir+"force.txt", arma::raw_ascii);
 		V0.save(datadir+"V0.txt", arma::raw_ascii);
 		Eg.save(datadir+"Eg.txt", arma::raw_ascii);
 		n_imp.save(datadir+"n_imp.txt", arma::raw_ascii);

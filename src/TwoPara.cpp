@@ -1,9 +1,6 @@
 #include <TwoPara.h>
 #include <gauss.h>
-#include <chrono>
 #include <join.h>
-
-using iclock = std::chrono::high_resolution_clock;
 
 using namespace arma;
 
