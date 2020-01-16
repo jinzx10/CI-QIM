@@ -188,5 +188,5 @@ cx_mat TwoPara::dc_() {
 		for (uword col = 0; col != sz_sub; ++col)
 			overlap(row, col) = det( orb_overlap(idx(row), idx(col)) );
 
-	return arma::logmat( vec_cis_sub.t() * overlap * model_.vec_cis_sub ) / dx;
+	return logmat( vec_cis_sub.t() * overlap * model_.vec_cis_sub ) / dx;
 }
