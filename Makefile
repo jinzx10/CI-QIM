@@ -17,7 +17,7 @@ findmu_deps 	= fermi newtonroot
 TwoPara_deps 	= gauss
 TwoPara_deps_h 	= join
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara)
+exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 
@@ -47,7 +47,7 @@ ${exe_test_hdr} : ${BDIR}/test_% : ${ODIR}/test_%.o $$(call gen_obj,$${$$*_deps}
 ${ODIR}/main.o 	: main.cpp $(call gen_hdr,${main_deps_h} ${main_deps}) | ${ODIR}
 	${CC} -c $< -o $@ ${CPPFLAGS}
 
-${obj_test_src} : ${ODIR}/test_%.o : test_%.cpp %.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
+${obj_test_src} : ${ODIR}/test_%.o : test_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
 	${CC} -c $< -o $@ ${CPPFLAGS}
 
 ${obj_test_hdr} : ${ODIR}/test_%.o : test_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
