@@ -14,6 +14,8 @@ vpath %.cpp ${SDIR}
 main_deps 		= fermi newtonroot findmu gauss 
 main_deps_h 	= join
 findmu_deps 	= fermi newtonroot
+dc_deps 		= TwoPara gauss
+dc_deps_h 		= join join
 TwoPara_deps 	= gauss
 TwoPara_deps_h 	= join
 

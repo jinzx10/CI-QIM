@@ -1,5 +1,8 @@
 #include <dc.h>
 #include <armadillo>
+#include <TwoPara.h>
+
+using namespace arma;
 
 int main() {
 	int sz = 5;
@@ -120,6 +123,64 @@ int main() {
 	std::cout << "dumb" << std::endl;
 	dumb3_row.print();
 	std::cout << std::endl;
+
+
+	////////////////////////////////////////////////////////////
+	//					derivative coupling
+	////////////////////////////////////////////////////////////
+	double x0_mpt = 2;
+	double x0_fil = 2.3;
+	double omega = 0.002;
+	double mass = 14000;
+	double dE_fil = 0.0000;
+	
+	auto E_mpt = [&] (double const& x) { return 0.5 * mass * omega* omega* 
+		(x - x0_mpt) * (x - x0_mpt);};
+	auto E_fil = [&] (double const& x) { return 0.5 * mass * omega* omega* 
+		(x - x0_fil) * (x - x0_fil) + dE_fil;};
+
+	double W = 0.05;
+	double bath_min = -W;
+	double bath_max = W;
+	uword n_bath = 400;
+	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
+	double dos = 1.0 / (bath(1) - bath(0));
+
+	uword n_occ = n_bath / 2;
+	uword n_vir = n_bath + 1 - n_occ;
+	uword sz_sub = n_occ + n_vir - 1;
+
+	double hybrid = 0.001;
+	auto cpl = [&] (double const& x) -> vec {
+		return ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
+	};
+
+	uword nx = 100;
+	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
+	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
+	vec vec_do_, vec_dv_;
+	mat vec_occ_, vec_vir_;
+	mat overlap;
+
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_dc/";
+	for (uword i = 0; i != 2; ++i) {
+		if (i != 0) {
+			vec_do_ = model.vec_do;
+			vec_dv_ = model.vec_dv;
+			vec_occ_ = model.vec_occ;
+			vec_vir_ = model.vec_vir;
+		}
+
+		model.set_and_calc(xgrid(i));
+
+		if (i != 0) {
+			std::cout << "ready" << std::endl;
+			overlap = ovl(vec_do_, vec_occ_, vec_dv_, vec_vir_,
+					model.vec_do, model.vec_occ, model.vec_dv, model.vec_vir);
+			overlap.save(datadir+"overlap.txt", arma::raw_ascii);
+		}
+
+	}
 
 	return 0;
 }
