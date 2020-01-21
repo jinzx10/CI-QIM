@@ -14,7 +14,7 @@ void adj_phase(mat const& vecs_old, mat& vecs_new) {
 }
 
 uvec range(uword const& i, uword const& j) {
-	return regspace<uvec>(i, j); // end-inclusive
+	return regspace<uvec>(i, 1u, j); // end-inclusive
 }
 
 mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& vec_vir_, vec const& vec_do, mat const& vec_occ, vec const& vec_dv, mat const& vec_vir) {
@@ -89,9 +89,17 @@ mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& 
 	for (uword i = 1; i != n_occ; ++i) {
 		uvec idx_ref = idx(range(0, i-1), n_occ, range(i+1, n_occ-1));
 		ref = ovl_orb(idx_ref, idx_ref);
+		if (n_vir+i == n_vir+n_occ-1) {
+			std::cout << "end begins" << std::endl;
+			std::cout << "det(ref) = " << det(ref) << std::endl;
+			auto tmp = -det12(ref, idx_occ, ovl_orb(idx_ref, uvec{i})).t();
+			idx_ref.t().print();
+			tmp.print();
+		}
 		ovl(n_vir+i, span_idv) = -det12(ref, idx_occ, ovl_orb(idx_ref, uvec{i})).t();
 		ovl(n_vir+i, n_vir+i) = det(ref);
 	}
+	std::cout << "ovl(end,end) = " << ovl(n_vir+n_occ-1, n_vir+n_occ-1) << std::endl;
 
 	std::cout << "aj block begin" << std::endl;
 	// aj block

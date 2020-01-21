@@ -29,7 +29,7 @@ arma::uvec idx(T const& i) {
 }
 
 template <typename T, typename ...Ts>
-arma::uvec idx(T const& i, Ts ...args) {
+arma::uvec idx(T const& i, Ts const& ...args) {
 	return arma::join_cols(arma::uvec{i}, idx(args...));
 }
 
