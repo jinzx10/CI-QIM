@@ -1,10 +1,14 @@
+//#define TEST_DET
+#define TEST_DC
 #include <dc.h>
 #include <armadillo>
 #include <TwoPara.h>
+#include <cstdlib>
 
 using namespace arma;
 
 int main() {
+#ifdef TEST_DET
 	int sz = 5;
 	arma::mat B = arma::randn(sz, sz);
 	arma::mat A, r, vecs;
@@ -123,8 +127,8 @@ int main() {
 	std::cout << "dumb" << std::endl;
 	dumb3_row.print();
 	std::cout << std::endl;
-
-
+#endif
+#ifdef TEST_DC
 	////////////////////////////////////////////////////////////
 	//					derivative coupling
 	////////////////////////////////////////////////////////////
@@ -163,6 +167,8 @@ int main() {
 	mat overlap;
 
 	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_dc/";
+	std::string cmd = "mkdir -p " + datadir;
+	std::system(cmd.c_str());
 	for (uword i = 0; i != 2; ++i) {
 		if (i != 0) {
 			vec_do_ = model.vec_do;
@@ -181,6 +187,6 @@ int main() {
 		}
 
 	}
-
+#endif
 	return 0;
 }

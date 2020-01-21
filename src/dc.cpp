@@ -34,9 +34,12 @@ mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& 
 	mat ovl = zeros(n_occ+n_vir, n_occ+n_vir);
 
 
-	vo.save("/home/zuxin/job/CI-QIM/data/test_dc/vo.txt", raw_ascii);
-	vv.save("/home/zuxin/job/CI-QIM/data/test_dc/vv.txt", raw_ascii);
-	ovl_orb.save("/home/zuxin/job/CI-QIM/data/test_dc/orb_overlap.txt", raw_ascii);
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_dc/";
+	vo_.save(datadir+"vo_.txt", raw_ascii);
+	vv_.save(datadir+"vv_.txt", raw_ascii);
+	vo.save(datadir+"vo.txt", raw_ascii);
+	vv.save(datadir+"vv.txt", raw_ascii);
+	ovl_orb.save(datadir+"orb_overlap.txt", raw_ascii);
 
 
 	// sizes and indices of the orbitals:
