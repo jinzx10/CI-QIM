@@ -22,15 +22,16 @@ T join(std::initializer_list< std::initializer_list<T> > m) {
 	return z;
 }
 
+inline arma::uvec cat() { return arma::uvec{}; }
 
 template <typename T>
-arma::uvec idx(T const& i) {
+arma::uvec cat(T const& i) {
 	return arma::uvec{i};
 }
 
 template <typename T, typename ...Ts>
-arma::uvec idx(T const& i, Ts const& ...args) {
-	return arma::join_cols(arma::uvec{i}, idx(args...));
+arma::uvec cat(T const& i, Ts const& ...args) {
+	return arma::join_cols(arma::uvec{i}, cat(args...));
 }
 
 #endif

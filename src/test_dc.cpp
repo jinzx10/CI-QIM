@@ -4,8 +4,10 @@
 #include <armadillo>
 #include <TwoPara.h>
 #include <cstdlib>
+#include <chrono>
 
 using namespace arma;
+using iclock = std::chrono::high_resolution_clock;
 
 int main() {
 #ifdef TEST_DET
@@ -164,11 +166,15 @@ int main() {
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
 	vec vec_do_, vec_dv_;
 	mat vec_occ_, vec_vir_;
-	mat overlap;
+	mat overlap, overlap_dumb;
 
 	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_dc/";
 	std::string cmd = "mkdir -p " + datadir;
 	std::system(cmd.c_str());
+
+	iclock::time_point start;
+	std::chrono::duration<double> dur;
+
 	for (uword i = 0; i != 2; ++i) {
 		if (i != 0) {
 			vec_do_ = model.vec_do;
@@ -180,10 +186,19 @@ int main() {
 		model.set_and_calc(xgrid(i));
 
 		if (i != 0) {
-			std::cout << "ready" << std::endl;
+			start = iclock::now();
 			overlap = ovl(vec_do_, vec_occ_, vec_dv_, vec_vir_,
 					model.vec_do, model.vec_occ, model.vec_dv, model.vec_vir);
+			dur = iclock::now() - start;
+			std::cout << "smart time elapsed = " << dur.count() << std::endl;
 			overlap.save(datadir+"overlap.txt", arma::raw_ascii);
+
+			start = iclock::now();
+			overlap_dumb = ovl_dumb(vec_do_, vec_occ_, vec_dv_, vec_vir_,
+					model.vec_do, model.vec_occ, model.vec_dv, model.vec_vir);
+			dur = iclock::now() - start;
+			std::cout << "dumb time elapsed = " << dur.count() << std::endl;
+			overlap_dumb.save(datadir+"overlap_dumb.txt", arma::raw_ascii);
 		}
 
 	}
