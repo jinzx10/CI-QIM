@@ -154,7 +154,7 @@ mat ovl_dumb(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat co
 	//          Psi_{0}  Psi_{do}^{dv}   Psi_{do}^{a}     Psi_{i}^{dv}
 	// size       1            1           n_vir-1          n_occ-1
 	// index      0            1          2 : n_vir   n_vir+1 : n_vir+n_occ-1
-	auto idx_gnd = [&] () -> uvec { return range(0, n_occ-1);};
+	auto idx_gnd = [&] () -> uvec { return range(0, n_occ-1); };
 	auto idx_doa = [&] (uword const& a) -> uvec {
 		return cat(n_occ+a, range(1, n_occ-1)); // a starts from 0 (dv)
 	};
