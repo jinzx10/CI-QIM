@@ -6,43 +6,44 @@
 
 struct FSSH
 {
-	FSSH( TwoPara* model_,
-			double const& mass_,
-			double const& dtc_,
-			unsigned int const& rcq_, // ratio between dtc and dtq
-			unsigned int const& ntc_,
-			double const& kT_,
-			double const& gamma_ // external phononic friction
+	FSSH(	TwoPara*					model_,
+			double			const&		mass_,
+			double			const&		dtc_,
+			arma::uword		const& 		rcq_, // ratio between dtc and dtq
+			arma::uword		const& 		ntc_,
+			double			const& 		kT_,
+			double 			const& 		gamma_ // external phononic friction
 	);
 
 	void initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
 	void propagate();
 
 	void evolve_nucl(); // Velocity Verlet
-	void calc_dc();
+	void calc_Tdc();
 	void evolve_elec(); // Runge-Kutta
 	void hop();
 	void collect();
+	arma::cx_vec drho_dt(arma::cx_vec const& rho);
 
 
 	TwoPara* model;
 	double mass;
 	double dtc;
 	double dtq;
-	unsigned int rcq;
-	unsigned int ntc;
+	arma::uword rcq;
+	arma::uword ntc;
 	double kT;
 	double gamma;
 
-	unsigned int state;
+	arma::uword state;
 	double x;
 	double v;
 	arma::cx_mat rho;
-	unsigned int counter;
+	arma::uword counter;
 
 	arma::vec vec_do;
 	arma::vec vec_dv;
-	arma::cx_mat dc;
+	arma::cx_mat Tdc;
 
 	bool has_hop;
 
