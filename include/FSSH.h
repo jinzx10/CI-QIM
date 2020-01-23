@@ -37,13 +37,10 @@ struct FSSH
 	arma::uword			state;
 	double				x;
 	double 				v;
-	arma::cx_mat		rho;
-	arma::uword			counter;
-
-	arma::vec			vec_do;
-	arma::vec 			vec_dv;
+	arma::cx_mat		rho; // density matrix
 	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
 
+	arma::uword			counter;
 	bool				has_hop;
 
 	// data storage for one trajectory

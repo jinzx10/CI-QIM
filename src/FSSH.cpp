@@ -2,6 +2,7 @@
 #include <dc.h>
 #include <join.h>
 #include <complex>
+#include <fermi.h>
 
 using namespace arma;
 
@@ -68,14 +69,23 @@ void FSSH::calc_T() {
 }
 
 cx_mat FSSH::drho_dt(cx_mat const& rho_) {
-	cx_vec E = conv_to<cx_vec>::from( 
-			join_cols( vec{model->ev_H}, model->val_cis_sub ) );
-
+	uword sz = rho_.n_cols;
+	vec E = join_cols( vec{model->ev_H}, model->val_cis_sub );
 	std::complex<double> I{0.0, 1.0};
-	cx_mat drho = -I * ( rho_.each_col() % E - rho_.each_row() % E ) - (T * rho_ - rho_ * T);
 
-	// additional damping TBD...
+	vec rho_eq = exp(-E/kT) / accu(exp(-E/kT));
+	cx_mat L_rho = zeros<cx_mat>(sz, sz);
+	vec tmp = zeros(sz);
+	vec pop = real(rho_.diag());
+	pop.shed_row(0);
+	tmp.tail(sz-1) = model->Gamma % (pop-rho_eq);
+	tmp(0) = -accu(tmp.tail(sz-1));
+	L_rho.diag() = conv_to<cx_vec>::from(tmp);
+	L_rho(0, span(1, sz-1)) = model->Gamma.t() % rho_(0, span(1, sz-1));
+	L_rho(span(1, sz-1), 0) = model->Gamma % rho_(span(1, sz-1), 0);
 	
+	cx_mat drho = -I * ( rho_.each_col() % conv_to<cx_vec>::from(E) - rho_.each_row() % conv_to<cx_vec>::from(E) ) - (T * rho_ - rho_ * T) - L_rho;
+
 	return drho;
 }
 
@@ -95,10 +105,40 @@ void FSSH::evolve_elec() {
 void FSSH::hop() {
 	arma::arma_rng::set_seed_random();
 	double r = randu();
+	int v_sign = (v >= 0) * 1 + (v < 0) * -1;
+
 	// find hopping amplitudes to various states
-	// if hop, see if kinetic energy is enough
-	// adjust velocity (if success), and set has_hop to 1
-	// for frustrated hop, consider velocity reversal
+	// by assumption, for an excited state, it either stays or hops to the ground state
+	if (state) { // excited -> ground
+		double g_hop = drho_dt(rho)(state, state).real() / rho(state, state).real() * dtq;
+		if ( r < g_hop ) {
+			state = 0;
+			has_hop = 1;
+			double dE = model->val_cis_sub(state-1) - model->ev_H;
+			v = v_sign * sqrt(v*v + 2.0 * dE / mass);
+		}
+	} else { // ground -> excited
+		vec drho_tmp = real( drho_dt(rho).diag() );
+		drho_tmp.shed_row(0);
+		vec rho_tmp = real( rho.diag() );
+		rho_tmp.shed_row(0);
+		vec g_hops = drho_tmp / rho_tmp * dtq;
+		vec g_cumsum = cumsum(g_hops);
+		for (uword i = 0; i != g_cumsum.n_elem; ++i) {
+			if ( r > g_cumsum(i) && r < g_cumsum(i+1)/*problem!*/ ) {
+				double dE = model->val_cis_sub(i+1) - model->ev_H;
+				if ( 0.5 * mass * v * v > dE ) {
+					v = v_sign * std::sqrt( v*v - 2.0 * dE / mass );
+					state = i+1;
+					has_hop = 1;
+				} else { // frustrated hop: velocity reversal
+
+				}
+				break;
+			}
+		}
+
+	}
 }
 
 void FSSH::collect() {
@@ -111,6 +151,7 @@ void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
 		evolve_nucl();
 		calc_T();
+		has_hop = 0;
 		for (arma::uword i = 0; i != rcq; ++i) {
 			evolve_elec();
 			if (!has_hop)
