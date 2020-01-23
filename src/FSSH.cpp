@@ -1,5 +1,7 @@
 #include <FSSH.h>
 #include <dc.h>
+#include <join.h>
+#include <complex>
 
 using namespace arma;
 
@@ -41,25 +43,40 @@ void FSSH::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 }
 
-void FSSH::calc_Tdc() {
+void FSSH::calc_T() {
 	vec do_ = model->vec_do;
 	vec dv_ = model->vec_dv;
 	mat vec_occ_ = model->vec_occ;
 	mat vec_vir_ = model->vec_vir;
+
 	mat coef_ = model->vec_cis_sub;
+	uword sz = coef_.n_cols;
+	coef_ = join<mat>( { {vec{1}, zeros(1, sz)}, {zeros(sz, 1), coef_} } );
 
 	model->set_and_calc(x);
 
-	mat overlap = ovl(do_, vec_occ_, dv_, vec_vir_, model->vec_do, model->vec_occ, model->vec_dv, model->vec_vir);
+	mat coef = join<mat>( { {vec{1}, zeros(1, sz)},
+			{zeros(sz, 1), model->vec_cis_sub} } );
 
-	// multiply coefficients
-	// Lowdin-orthoginalization! 
+	mat overlap = coef_.t() * ovl(do_, vec_occ_, dv_, vec_vir_, model->vec_do, model->vec_occ, model->vec_dv, model->vec_vir) * coef;
 
-	//Tdc = logmat(  ) / dtc;
+	// Lowdin-orthoginalization
+	overlap *= sqrtmat_sympd( overlap.t() * overlap );
+
+	// time derivative matrix
+	T = real( logmat(overlap) ) / dtc;
 }
 
-cx_vec FSSH::drho_dt(cx_vec const& rho) {
+cx_mat FSSH::drho_dt(cx_mat const& rho_) {
+	cx_vec E = conv_to<cx_vec>::from( 
+			join_cols( vec{model->ev_H}, model->val_cis_sub ) );
 
+	std::complex<double> I{0.0, 1.0};
+	cx_mat drho = -I * ( rho_.each_col() % E - rho_.each_row() % E ) - (T * rho_ - rho_ * T);
+
+	// additional damping TBD...
+	
+	return drho;
 }
 
 void FSSH::evolve_elec() {
@@ -93,7 +110,7 @@ void FSSH::collect() {
 void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
 		evolve_nucl();
-		calc_Tdc();
+		calc_T();
 		for (arma::uword i = 0; i != rcq; ++i) {
 			evolve_elec();
 			if (!has_hop)

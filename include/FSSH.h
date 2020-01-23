@@ -15,42 +15,41 @@ struct FSSH
 			double 			const& 		gamma_ // external phononic friction
 	);
 
-	void initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
-	void propagate();
+	void				initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
+	void				propagate();
 
-	void evolve_nucl(); // Velocity Verlet
-	void calc_Tdc();
-	void evolve_elec(); // Runge-Kutta
-	void hop();
-	void collect();
-	arma::cx_vec drho_dt(arma::cx_vec const& rho);
+	void				evolve_nucl(); // Velocity Verlet
+	void 				calc_T();
+	void 				evolve_elec(); // Runge-Kutta
+	void 				hop();
+	void 				collect();
+	arma::cx_mat		drho_dt(arma::cx_mat const& rho_);
 
+	TwoPara*			model;
+	double				mass;
+	double 				dtc;
+	double 				dtq;
+	arma::uword			rcq;
+	arma::uword 		ntc;
+	double				kT;
+	double 				gamma;
 
-	TwoPara* model;
-	double mass;
-	double dtc;
-	double dtq;
-	arma::uword rcq;
-	arma::uword ntc;
-	double kT;
-	double gamma;
+	arma::uword			state;
+	double				x;
+	double 				v;
+	arma::cx_mat		rho;
+	arma::uword			counter;
 
-	arma::uword state;
-	double x;
-	double v;
-	arma::cx_mat rho;
-	arma::uword counter;
+	arma::vec			vec_do;
+	arma::vec 			vec_dv;
+	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
 
-	arma::vec vec_do;
-	arma::vec vec_dv;
-	arma::cx_mat Tdc;
-
-	bool has_hop;
+	bool				has_hop;
 
 	// data storage for one trajectory
-	arma::vec		x_t;
-	arma::vec		v_t;
-	arma::uvec		state_t;
+	arma::vec			x_t;
+	arma::vec			v_t;
+	arma::uvec			state_t;
 };
 
 #endif
