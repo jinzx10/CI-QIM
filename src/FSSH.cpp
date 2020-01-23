@@ -12,7 +12,7 @@ FSSH::FSSH(		TwoPara*					model_,
 				arma::uword		const& 		rcq_,
 				arma::uword		const& 		ntc_,
 				double			const&		kT_,
-				double			const&		gamma_	):
+				double			const&		gamma_		):
 	model(model_), mass(mass_), dtc(dtc_), rcq(rcq_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
 	state(0), x(0), v(0), rho(cx_mat{}), counter(0), has_hop(false),
