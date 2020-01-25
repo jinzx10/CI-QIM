@@ -39,6 +39,8 @@ struct FSSH
 	double 				v;
 	arma::cx_mat		rho; // density matrix
 	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
+	arma::uword			sz_elec;
+	arma::cx_mat		L_rho; // extra damping term
 
 	arma::uword			counter;
 	bool				has_hop;

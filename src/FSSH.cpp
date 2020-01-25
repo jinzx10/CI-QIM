@@ -19,6 +19,8 @@ FSSH::FSSH(		TwoPara*					model_,
 	x_t(zeros(ntc)), v_t(zeros(ntc)), state_t(zeros<uvec>(ntc))
 {
 	dtq = dtc / rcq;
+	sz_elec = model->n_occ + model->n_vir;
+	L_rho.zeros(sz_elec, sz_elec);
 }
 
 void FSSH::initialize(bool const& state0, double const& x0, double const& v0, arma::cx_mat const& rho0) {
@@ -74,41 +76,65 @@ cx_mat FSSH::drho_dt(cx_mat const& rho_) {
 	std::complex<double> I{0.0, 1.0};
 
 	vec rho_eq = exp(-E/kT) / accu(exp(-E/kT));
-	cx_mat L_rho = zeros<cx_mat>(sz, sz);
-	vec tmp = zeros(sz);
-	vec pop = real(rho_.diag());
-	pop.shed_row(0);
-	tmp.tail(sz-1) = model->Gamma % (pop-rho_eq);
-	tmp(0) = -accu(tmp.tail(sz-1));
-	L_rho.diag() = conv_to<cx_vec>::from(tmp);
-	L_rho(0, span(1, sz-1)) = model->Gamma.t() % rho_(0, span(1, sz-1));
-	L_rho(span(1, sz-1), 0) = model->Gamma % rho_(span(1, sz-1), 0);
 	
-	cx_mat drho = -I * ( rho_.each_col() % conv_to<cx_vec>::from(E) - rho_.each_row() % conv_to<cx_vec>::from(E) ) - (T * rho_ - rho_ * T) - L_rho;
+	vec L_diag = zeros(sz);
+	vec rho_diag = real(rho_.diag());
+	span idx_cis = span(1, sz-1);
+	L_diag(idx_cis) = model->Gamma % ( rho_diag(idx_cis) - rho_eq(idx_cis) );
+	L_diag(0) = -accu( L_diag(idx_cis) );
 
-	return drho;
+	L_rho.diag() = conv_to<cx_vec>::from(L_diag);
+	L_rho(0, idx_cis) = 0.5 * model->Gamma.t() % rho_(0, idx_cis);
+	L_rho(idx_cis, 0) = 0.5 * model->Gamma % rho_(idx_cis, 0);
+	
+	return -I * ( rho_.each_col() % conv_to<cx_vec>::from(E) - rho_.each_row() % conv_to<cx_rowvec>::from(E.t()) ) - (T * rho_ - rho_ * T) - L_rho;
 }
 
 void FSSH::evolve_elec() {
-	cx_vec rho0 = vectorise(rho);
-	uword sz = rho.n_cols;
-
-	cx_vec k1 = dtq * drho_dt(rho0);
-	cx_vec k2 = dtq * drho_dt(rho0 + 0.5*k1);
-	cx_vec k3 = dtq * drho_dt(rho0 + 0.5*k2);
-	cx_vec k4 = dtq * drho_dt(rho0 + k3);
-
-	rho0 += (k1 + 2.0*k2 + 2.0*k3 + k4) / 6.0;
-	rho = arma::reshape(rho0, sz, sz);
+	cx_mat k1 = dtq * drho_dt(rho);
+	cx_mat k2 = dtq * drho_dt(rho + 0.5*k1);
+	cx_mat k3 = dtq * drho_dt(rho + 0.5*k2);
+	cx_mat k4 = dtq * drho_dt(rho + k3);
+	rho += (k1 + 2.0*k2 + 2.0*k3 + k4) / 6.0;
 }
 
 void FSSH::hop() {
-	arma::arma_rng::set_seed_random();
-	double r = randu();
 	int v_sign = (v >= 0) * 1 + (v < 0) * -1;
 
-	// find hopping amplitudes to various states
-	// by assumption, for an excited state, it either stays or hops to the ground state
+	// individual components in (d/dt)rho_mm
+	vec g = 2.0 * real( T.row(state).t() % rho.col(state) ); // normal 
+	vec q = zeros(sz_elec); // extra damping
+	if (state) {
+		q(0) = L_rho(state, state).real();
+	} else {
+		q = -real( L_rho.diag() );
+		q(0) = 0;
+	}
+
+	// hopping probability to each state
+	vec g_hop = g + q;
+	vec P_hop = dtq * g_hop % (g_hop > 0) / rho(state, state).real();
+
+	// determine the destination state of hopping
+	vec P_cumu = cumsum(P_hop);
+	uword target = 0;
+	arma_rng::set_seed_random();
+	double r = randu();
+	for (target = 0; target != sz_elec; ++target) {
+		if ( r < P_cumu(target) )
+			break;
+	}
+
+	if ( target == sz_elec ) // no hopping happens
+		return;
+
+
+
+
+
+
+
+
 	if (state) { // excited -> ground
 		double g_hop = drho_dt(rho)(state, state).real() / rho(state, state).real() * dtq;
 		if ( r < g_hop ) {
