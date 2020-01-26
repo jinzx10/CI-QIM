@@ -3,7 +3,9 @@
 #include <join.h>
 #include <complex>
 #include <fermi.h>
+#include <chrono>
 
+using iclock = std::chrono::high_resolution_clock;
 using namespace arma;
 
 FSSH::FSSH(		TwoPara*					model_,
@@ -19,8 +21,8 @@ FSSH::FSSH(		TwoPara*					model_,
 	x_t(zeros(ntc)), v_t(zeros(ntc)), state_t(zeros<uvec>(ntc))
 {
 	dtq = dtc / rcq;
-	sz_elec = model->n_occ + model->n_vir;
-	L_rho.zeros(sz_elec, sz_elec);
+	sz = model->n_occ + model->n_vir;
+	idx_cis = span(1, sz-1);
 }
 
 void FSSH::initialize(bool const& state0, double const& x0, double const& v0, arma::cx_mat const& rho0) {
@@ -40,54 +42,69 @@ void FSSH::initialize(bool const& state0, double const& x0, double const& v0, ar
 }
 
 void FSSH::evolve_nucl() {
-	double a = model->force_(x,state) / mass;
-	x += v * dtc + 0.5 * a * dtc * dtc;
-	double a_new = model->force_(x,state) / mass;
-	v += 0.5 * (a + a_new) * dtc;
-}
-
-void FSSH::calc_T() {
+	// store the necessary data for time derivative coupling calculation
 	vec do_ = model->vec_do;
 	vec dv_ = model->vec_dv;
 	mat vec_occ_ = model->vec_occ;
 	mat vec_vir_ = model->vec_vir;
+	std::cout << "before coef_" << std::endl;
+	std::cout << "sz = " << sz << std::endl;
+	std::cout << "size vec_cis_sub = " << model->vec_cis_sub.n_cols << std::endl;
+	mat coef_ = join<mat>( { { vec{1}		 , zeros(1, sz-1)	   },
+							 { zeros(sz-1, 1), model->vec_cis_sub  } } );
 
-	mat coef_ = model->vec_cis_sub;
-	uword sz = coef_.n_cols;
-	coef_ = join<mat>( { {vec{1}, zeros(1, sz)}, {zeros(sz, 1), coef_} } );
-
+	// Velocity-Verlet (with external phononic friction)
+	double F_fric = -gamma * v;
+	double F_rand = sqrt( 2.0 * gamma * kT / dtc ) * randn();
+	F_pes = model->force_(state);
+	double a = ( F_pes + F_fric + F_rand ) / mass;
+	x += v * dtc + 0.5 * a * dtc * dtc;
+	std::cout << "before update x" << std::endl;
 	model->set_and_calc(x);
+	F_pes = model->force_(state);
+	double a_new = ( F_pes + F_fric + F_rand ) / mass;
+	v += 0.5 * (a + a_new) * dtc;
 
-	mat coef = join<mat>( { {vec{1}, zeros(1, sz)},
-			{zeros(sz, 1), model->vec_cis_sub} } );
-
+	// calculate the time derivative coupling
+	mat coef = join<mat>( { { vec{1}		, zeros(1, sz-1)	  },
+							{ zeros(sz-1, 1), model->vec_cis_sub  } } );
+	std::cout << "before ovl" << std::endl;
+	iclock::time_point start  = iclock::now();
 	mat overlap = coef_.t() * ovl(do_, vec_occ_, dv_, vec_vir_, model->vec_do, model->vec_occ, model->vec_dv, model->vec_vir) * coef;
+	std::chrono::duration<double> dur = iclock::now() - start;
+	std::cout << "ovl elapsed = " << dur.count() << std::endl;
 
 	// Lowdin-orthoginalization
 	overlap *= sqrtmat_sympd( overlap.t() * overlap );
 
-	// time derivative matrix
+	// time derivative coupling matrix
 	T = real( logmat(overlap) ) / dtc;
+	
+	// instantaneous adiabatic energies and equilibrium population
+	E = join_cols( vec{model->ev_H}, model->val_cis_sub );
+	rho_eq = exp(-E/kT) / accu( exp(-E/kT) );
+	std::cout << "end evolve_nucl" << std::endl;
 }
 
-cx_mat FSSH::drho_dt(cx_mat const& rho_) {
-	uword sz = rho_.n_cols;
-	vec E = join_cols( vec{model->ev_H}, model->val_cis_sub );
-	std::complex<double> I{0.0, 1.0};
+cx_mat FSSH::L_rho(cx_mat const& rho_) {
+	cx_mat tmp = zeros<cx_mat>(sz, sz);
 
-	vec rho_eq = exp(-E/kT) / accu(exp(-E/kT));
-	
 	vec L_diag = zeros(sz);
 	vec rho_diag = real(rho_.diag());
-	span idx_cis = span(1, sz-1);
 	L_diag(idx_cis) = model->Gamma % ( rho_diag(idx_cis) - rho_eq(idx_cis) );
 	L_diag(0) = -accu( L_diag(idx_cis) );
 
-	L_rho.diag() = conv_to<cx_vec>::from(L_diag);
-	L_rho(0, idx_cis) = 0.5 * model->Gamma.t() % rho_(0, idx_cis);
-	L_rho(idx_cis, 0) = 0.5 * model->Gamma % rho_(idx_cis, 0);
-	
-	return -I * ( rho_.each_col() % conv_to<cx_vec>::from(E) - rho_.each_row() % conv_to<cx_rowvec>::from(E.t()) ) - (T * rho_ - rho_ * T) - L_rho;
+	tmp.diag() = conv_to<cx_vec>::from(L_diag);
+	tmp(0, idx_cis) = 0.5 * model->Gamma.t() % rho_(0, idx_cis);
+	tmp(idx_cis, 0) = 0.5 * model->Gamma % rho_(idx_cis, 0);
+	return tmp;
+}
+
+cx_mat FSSH::drho_dt(cx_mat const& rho_) {
+	std::complex<double> I{0.0, 1.0};
+	return -I * ( rho_.each_col() % conv_to<cx_vec>::from(E) - 
+				  rho_.each_row() % conv_to<cx_rowvec>::from(E.t()) ) 
+		- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
 void FSSH::evolve_elec() {
@@ -103,12 +120,12 @@ void FSSH::hop() {
 
 	// individual components in (d/dt)rho_mm
 	vec g = 2.0 * real( T.row(state).t() % rho.col(state) ); // normal 
-	vec q = zeros(sz_elec); // extra damping
+	vec q = zeros(sz); // extra damping
 	if (state) {
-		q(0) = L_rho(state, state).real();
+		q(0) = model->Gamma(state-1) * ( rho(state, state).real() - rho_eq(state) );
 	} else {
-		q = -real( L_rho.diag() );
-		q(0) = 0;
+		vec rho_diag = real(rho.diag());
+		q(idx_cis) = model->Gamma % ( rho_diag(idx_cis) - rho_eq(idx_cis) );
 	}
 
 	// hopping probability to each state
@@ -120,50 +137,23 @@ void FSSH::hop() {
 	uword target = 0;
 	arma_rng::set_seed_random();
 	double r = randu();
-	for (target = 0; target != sz_elec; ++target) {
+	for (target = 0; target != sz; ++target) {
 		if ( r < P_cumu(target) )
 			break;
 	}
 
-	if ( target == sz_elec ) // no hopping happens
+	if ( target == sz ) // no hopping happens
 		return;
 
-
-
-
-
-
-
-
-	if (state) { // excited -> ground
-		double g_hop = drho_dt(rho)(state, state).real() / rho(state, state).real() * dtq;
-		if ( r < g_hop ) {
-			state = 0;
-			has_hop = 1;
-			double dE = model->val_cis_sub(state-1) - model->ev_H;
-			v = v_sign * sqrt(v*v + 2.0 * dE / mass);
-		}
-	} else { // ground -> excited
-		vec drho_tmp = real( drho_dt(rho).diag() );
-		drho_tmp.shed_row(0);
-		vec rho_tmp = real( rho.diag() );
-		rho_tmp.shed_row(0);
-		vec g_hops = drho_tmp / rho_tmp * dtq;
-		vec g_cumsum = cumsum(g_hops);
-		for (uword i = 0; i != g_cumsum.n_elem; ++i) {
-			if ( r > g_cumsum(i) && r < g_cumsum(i+1)/*problem!*/ ) {
-				double dE = model->val_cis_sub(i+1) - model->ev_H;
-				if ( 0.5 * mass * v * v > dE ) {
-					v = v_sign * std::sqrt( v*v - 2.0 * dE / mass );
-					state = i+1;
-					has_hop = 1;
-				} else { // frustrated hop: velocity reversal
-
-				}
-				break;
-			}
-		}
-
+	double dE = E(target) - E(state);
+	if ( dE <= 0.5 * mass * v * v) { // successful hops
+		v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
+		state = target;
+		has_hop = 1;
+	} else { // frustrated hops
+		double F_tmp = model->force_(x, target);
+		if ( F_pes*F_tmp < 0 && F_tmp*v < 0  ) // velocity reveral
+			v = -v;
 	}
 }
 
@@ -175,15 +165,18 @@ void FSSH::collect() {
 
 void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
+		std::cout << "before evolve_nucl" << std::endl;
 		evolve_nucl();
-		calc_T();
 		has_hop = 0;
 		for (arma::uword i = 0; i != rcq; ++i) {
+			std::cout << "before evolve_elec" << std::endl;
 			evolve_elec();
+			std::cout << "after evolve_elec" << std::endl;
 			if (!has_hop)
 				hop();
 		}
 		collect();
+		std::cout << counter << "/" << ntc << " completed" << std::endl;
 	}
 }
 

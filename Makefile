@@ -18,8 +18,10 @@ dc_deps 		= TwoPara gauss
 dc_deps_h 		= join
 TwoPara_deps 	= gauss
 TwoPara_deps_h 	= join
+FSSH_deps 		= dc fermi TwoPara gauss
+FSSH_deps_h 	= join
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc)
+exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 

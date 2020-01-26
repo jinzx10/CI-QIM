@@ -19,10 +19,11 @@ struct FSSH
 	void				propagate();
 
 	void				evolve_nucl(); // Velocity Verlet
-	void 				calc_T();
 	void 				evolve_elec(); // Runge-Kutta
 	void 				hop();
 	void 				collect();
+
+	arma::cx_mat		L_rho(arma::cx_mat const& rho_);
 	arma::cx_mat		drho_dt(arma::cx_mat const& rho_);
 
 	TwoPara*			model;
@@ -33,14 +34,17 @@ struct FSSH
 	arma::uword 		ntc;
 	double				kT;
 	double 				gamma;
+	arma::span			idx_cis;
 
 	arma::uword			state;
 	double				x;
 	double 				v;
+	double				F_pes;
 	arma::cx_mat		rho; // density matrix
 	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
-	arma::uword			sz_elec;
-	arma::cx_mat		L_rho; // extra damping term
+	arma::uword			sz; // size of the electronic basis
+	arma::vec			E; // instantaneous adiabatic energies
+	arma::vec			rho_eq; // instantaneous equilibrium population
 
 	arma::uword			counter;
 	bool				has_hop;
