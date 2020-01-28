@@ -18,7 +18,7 @@ TwoPara::TwoPara(	d2d				E_mpt_,
 
 	n_bath = bath.n_elem;
 	n_vir = n_bath + 1 - n_occ;
-	sz_sub = n_occ + n_vir; // size of the relevant subspace (ground state + selected CIS)
+	sz_rel = n_occ + n_vir; // size of the relevant subspace (ground state + selected CIS)
 	dE_bath_avg = ( bath.max() - bath.min() ) / (bath.n_elem - 1);
 
 	span_occ = span(0, n_occ-1);
@@ -107,14 +107,13 @@ void TwoPara::calc_Gamma() {
 	Gamma = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
 }
 
-/*
-mat TwoPara::H_tmp(double const& x_) {
-	arma::mat h = diagmat( join_cols( vec{E_imp(x_)}, bath ) );
-	h(span(1,n_bath), 0) = cpl; 
-	h(0, span(1,n_bath)) = cpl.t();
-	return h;
+double TwoPara::E_rel(uword const& state_) {
+	return (state_) ? val_cis_sub(state_-1) : ev_H;
 }
-*/
+
+vec TwoPara::E_rel() {
+	return join_cols( vec{ev_H}, val_cis_sub );
+}
 
 double TwoPara::force(uword const& state_) {
 	if (state_ == 0)
@@ -123,73 +122,19 @@ double TwoPara::force(uword const& state_) {
 	double dx = 1e-6;
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
 	model_.set_and_calc_cis_sub(x+dx);
-	return - ( model_.val_cis_sub(state_-1) - val_cis_sub(state_-1) ) / dx;
+	return - ( model_.val_cis_sub(state_-1) - val_cis_sub(state_-1) ) / dx 
+		- dE_mpt(x);
 }
 
-vec TwoPara::force_() {
-	double dx = 1e-4;
-	vec f = zeros(sz_sub);
+vec TwoPara::force() {
+	double dx = 1e-6;
+	vec f = zeros(sz_rel);
 	f(0) = force(0);
 
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
 	model_.set_and_calc_cis_sub(x+dx);
-	f.tail(sz_sub-1) = - ( model_.val_cis_sub - val_cis_sub ) / dx;
+	f.tail(sz_rel-1) = - ( model_.val_cis_sub - val_cis_sub ) / dx - dE_mpt(x);
 	
 	return f;
 }
 
-double TwoPara::force_(double const& x_, uword const& state_) {
-	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x_);
-	return model_.force(state_);
-}
-
-mat TwoPara::vec_all_rot() {
-	return join_r<mat>({vec_do, vec_o, vec_dv, vec_v});
-}
-
-// the next four functions return occupied orbital indices for subspace 
-// basis functions (with respect to the order specified by vec_all_rot())
-uvec TwoPara::idx_gnd() {
-	return regspace<uvec>(0, n_occ-1);
-}
-
-uvec TwoPara::idx_doa(uword const& a) {
-	return join_cols( uvec{n_occ+1+a}, regspace<uvec>(1, n_occ-1) );
-}
-
-uvec TwoPara::idx_idv(uword const& i) {
-	uvec idx = regspace<uvec>(0, n_occ-1);
-	idx(i+1) = n_occ;
-	return idx;
-}
-
-uvec TwoPara::idx_dov() {
-	return join_cols( uvec{n_occ}, regspace<uvec>(1, n_occ-1) );
-}
-
-// for a row/column index in subspace, return the occupied indices
-uvec TwoPara::idx(uword const& n) {
-	if (n == 0)
-		return idx_gnd();
-	if (n == sz_sub-1)
-		return idx_dov();
-	if (n < n_vir)
-		return idx_doa(n-1);
-	return idx_idv(n-n_vir);
-}
-
-cx_mat TwoPara::dc_() {
-	double dx = 1e-4;
-	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x+dx);
-	mat orb_overlap = vec_all_rot().t() * model_.vec_all_rot();
-
-	mat overlap = zeros(sz_sub, sz_sub);
-
-	for (uword row = 0; row != sz_sub; ++row)
-		for (uword col = 0; col != sz_sub; ++col)
-			overlap(row, col) = det( orb_overlap(idx(row), idx(col)) );
-
-	return logmat( vec_cis_sub.t() * overlap * model_.vec_cis_sub ) / dx;
-}

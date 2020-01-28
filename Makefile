@@ -11,15 +11,16 @@ LDFLAGS 		= -larmadillo
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
+gauss_deps_h 	= bcast_op
 main_deps 		= fermi newtonroot findmu gauss 
-main_deps_h 	= join
+main_deps_h 	= join bcast_op
 findmu_deps 	= fermi newtonroot
 dc_deps 		= TwoPara gauss
-dc_deps_h 		= join
+dc_deps_h 		= join bcast_op
 TwoPara_deps 	= gauss
-TwoPara_deps_h 	= join
+TwoPara_deps_h 	= join bcast_op
 FSSH_deps 		= dc fermi TwoPara gauss
-FSSH_deps_h 	= join
+FSSH_deps_h 	= join bcast_op
 
 exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)

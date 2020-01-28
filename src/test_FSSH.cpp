@@ -47,40 +47,43 @@ int main() {
 	uword sz_sub = n_occ + n_vir;
 
 	double hybrid = 0.001;
-	auto cpl = [&] (double const& x) -> vec {
-		return ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
-	};
+	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
 
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
-	int n_trajs = 192;
+	int n_trajs = 3;
 	int n_trajs_local = n_trajs / nprocs;
 
-	double dtc = 20;
-	double dtq_est = 0.2;
+	double dtc = 10;
+	double dtq_est = 20;
 	uword rcq = dtc / dtq_est;
-	uword ntc = 200;
+	rcq = (rcq >= 1) ? rcq : 1;
+	uword ntc = 10;
 	double kT = 0.005;
-	double fric_gamma = 2.0 * mass * omega;
+	//double fric_gamma = 2.0 * mass * omega;
+	double fric_gamma = 0;
 	FSSH fssh(&model, mass, dtc, rcq, ntc, kT, fric_gamma);
 
 	// local data
 	mat x_local = arma::zeros(ntc, n_trajs_local);
 	mat v_local = arma::zeros(ntc, n_trajs_local);
 	umat state_local = arma::zeros<umat>(ntc, n_trajs_local);
+	mat E_local = arma::zeros(ntc, n_trajs_local);
 
 	// global data
 	mat x_t;
 	mat v_t;
 	umat state_t;
+	mat E_t;
 
 	if (id == 0) {
 		x_t.zeros(ntc, n_trajs);
 		v_t.zeros(ntc, n_trajs);
 		state_t.zeros(ntc, n_trajs);
+		E_t.zeros(ntc, n_trajs);
 		
 		start = iclock::now();
 	}
@@ -103,11 +106,13 @@ int main() {
 		x_local.col(i) = fssh.x_t;
 		v_local.col(i) = fssh.v_t;
 		state_local.col(i) = fssh.state_t;
+		E_local.col(i) = fssh.E_t;
 	}
 
 	::MPI_Gather(state_local.memptr(), state_local.n_elem, MPI_UNSIGNED_LONG_LONG, state_t.memptr(), state_local.n_elem, MPI_UNSIGNED_LONG_LONG, 0, MPI_COMM_WORLD);
 	::MPI_Gather(x_local.memptr(), x_local.n_elem, MPI_DOUBLE, x_t.memptr(), x_local.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	::MPI_Gather(v_local.memptr(), v_local.n_elem, MPI_DOUBLE, v_t.memptr(), v_local.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	::MPI_Gather(E_local.memptr(), E_local.n_elem, MPI_DOUBLE, E_t.memptr(), E_local.n_elem, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 	////////////////////////////////////////////////////////////
 	//					save data
@@ -120,6 +125,7 @@ int main() {
 		state_t.save(datadir + "state.txt", raw_ascii);
 		x_t.save(datadir + "x.txt", raw_ascii);
 		v_t.save(datadir + "v.txt", raw_ascii);
+		E_t.save(datadir + "E.txt", raw_ascii);
 
 		dur = iclock::now() - start;
 		std::cout << dur.count() << std::endl;

@@ -26,7 +26,7 @@ struct TwoPara
 	arma::uword			n_occ;
 	arma::uword 		n_vir;
 	arma::uword			n_bath;
-	arma::uword			sz_sub;
+	arma::uword			sz_rel;
 	double				dE_bath_avg;
 
 	arma::span			span_occ;
@@ -57,13 +57,6 @@ struct TwoPara
 	arma::mat			H_do_o;
 	arma::mat 			H_dv_v;
 
-	arma::mat			vec_all_rot();
-	arma::uvec			idx_gnd();
-	arma::uvec			idx_doa(arma::uword const& a);
-	arma::uvec			idx_idv(arma::uword const& i);
-	arma::uvec			idx_dov();
-	arma::uvec			idx(arma::uword const& n);
-
 	void				solve_cis_sub();
 	arma::vec			val_cis_sub;
 	arma::mat 			vec_cis_sub;
@@ -73,12 +66,10 @@ struct TwoPara
 	arma::vec			val_cis_bath;
 	arma::vec 			Gamma;
 
-	// calculate without changing contents in the class
-	//arma::mat			H_tmp(double const& x_);
+	double				E_rel(arma::uword const& state_);
+	arma::vec			E_rel();
 	double				force(arma::uword const& state_);
-	arma::vec			force_();
-	double				force_(double const& x_, arma::uword const& state_);
-	arma::cx_mat		dc_();
+	arma::vec			force();
 };
 
 

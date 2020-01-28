@@ -22,7 +22,9 @@ struct FSSH
 	void 				evolve_elec(); // Runge-Kutta
 	void 				hop();
 	void 				collect();
+	void				clear();
 
+	double				energy();
 	arma::cx_mat		L_rho(arma::cx_mat const& rho_);
 	arma::cx_mat		drho_dt(arma::cx_mat const& rho_);
 
@@ -34,7 +36,6 @@ struct FSSH
 	arma::uword 		ntc;
 	double				kT;
 	double 				gamma;
-	arma::span			idx_cis;
 
 	arma::uword			state;
 	double				x;
@@ -43,7 +44,7 @@ struct FSSH
 	arma::cx_mat		rho; // density matrix
 	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
 	arma::uword			sz; // size of the electronic basis
-	arma::vec			E; // instantaneous adiabatic energies
+	arma::span			span_cis;
 	arma::vec			rho_eq; // instantaneous equilibrium population
 
 	arma::uword			counter;
@@ -53,6 +54,7 @@ struct FSSH
 	arma::vec			x_t;
 	arma::vec			v_t;
 	arma::uvec			state_t;
+	arma::vec			E_t;
 };
 
 #endif

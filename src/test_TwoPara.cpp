@@ -38,7 +38,7 @@ int main() {
 	double W = 0.05;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 600;
+	uword n_bath = 400;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	double dos = 1.0 / (bath(1) - bath(0));
 
@@ -47,11 +47,9 @@ int main() {
 	uword sz_sub = n_occ + n_vir - 1;
 
 	double hybrid = 0.001;
-	auto cpl = [&] (double const& x) -> vec {
-		return ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
-	};
+	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
-	uword nx = 96;
+	uword nx = 300;
 	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
 	int local_nx = nx / nprocs;
 
@@ -89,7 +87,7 @@ int main() {
 		local_V0(i) = E_mpt(x);
 		local_Eg(i) = model.ev_H;
 		local_n_imp(i) = model.ev_n;
-		local_force.col(i) = model.force_();
+		local_force.col(i) = model.force();
 
 		std::cout << id*local_nx+i+1 << "/" << nx << " finished" << std::endl;
 	}

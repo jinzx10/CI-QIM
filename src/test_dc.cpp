@@ -157,9 +157,7 @@ int main() {
 	uword sz_sub = n_occ + n_vir - 1;
 
 	double hybrid = 0.001;
-	auto cpl = [&] (double const& x) -> vec {
-		return ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
-	};
+	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	uword nx = 100;
 	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
@@ -179,8 +177,8 @@ int main() {
 		if (i != 0) {
 			vec_do_ = model.vec_do;
 			vec_dv_ = model.vec_dv;
-			vec_occ_ = model.vec_occ;
-			vec_vir_ = model.vec_vir;
+			vec_occ_ = model.vec_o;
+			vec_vir_ = model.vec_v;
 		}
 
 		model.set_and_calc(xgrid(i));
@@ -188,14 +186,14 @@ int main() {
 		if (i != 0) {
 			start = iclock::now();
 			overlap = ovl(vec_do_, vec_occ_, vec_dv_, vec_vir_,
-					model.vec_do, model.vec_occ, model.vec_dv, model.vec_vir);
+					model.vec_do, model.vec_o, model.vec_dv, model.vec_v);
 			dur = iclock::now() - start;
 			std::cout << "smart time elapsed = " << dur.count() << std::endl;
 			overlap.save(datadir+"overlap.txt", arma::raw_ascii);
 
 			start = iclock::now();
 			overlap_dumb = ovl_dumb(vec_do_, vec_occ_, vec_dv_, vec_vir_,
-					model.vec_do, model.vec_occ, model.vec_dv, model.vec_vir);
+					model.vec_do, model.vec_o, model.vec_dv, model.vec_v);
 			dur = iclock::now() - start;
 			std::cout << "dumb time elapsed = " << dur.count() << std::endl;
 			overlap_dumb.save(datadir+"overlap_dumb.txt", arma::raw_ascii);
