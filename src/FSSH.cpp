@@ -5,7 +5,6 @@
 #include <fermi.h>
 #include <chrono>
 
-using iclock = std::chrono::high_resolution_clock;
 using namespace arma;
 
 FSSH::FSSH(		TwoPara*					model_,
@@ -47,9 +46,6 @@ void FSSH::evolve_nucl() {
 	vec dv_ = model->vec_dv;
 	mat vec_occ_ = model->vec_occ;
 	mat vec_vir_ = model->vec_vir;
-	std::cout << "before coef_" << std::endl;
-	std::cout << "sz = " << sz << std::endl;
-	std::cout << "size vec_cis_sub = " << model->vec_cis_sub.n_cols << std::endl;
 	mat coef_ = join<mat>( { { vec{1}		 , zeros(1, sz-1)	   },
 							 { zeros(sz-1, 1), model->vec_cis_sub  } } );
 
@@ -59,7 +55,6 @@ void FSSH::evolve_nucl() {
 	F_pes = model->force_(state);
 	double a = ( F_pes + F_fric + F_rand ) / mass;
 	x += v * dtc + 0.5 * a * dtc * dtc;
-	std::cout << "before update x" << std::endl;
 	model->set_and_calc(x);
 	F_pes = model->force_(state);
 	double a_new = ( F_pes + F_fric + F_rand ) / mass;
@@ -68,11 +63,7 @@ void FSSH::evolve_nucl() {
 	// calculate the time derivative coupling
 	mat coef = join<mat>( { { vec{1}		, zeros(1, sz-1)	  },
 							{ zeros(sz-1, 1), model->vec_cis_sub  } } );
-	std::cout << "before ovl" << std::endl;
-	iclock::time_point start  = iclock::now();
 	mat overlap = coef_.t() * ovl(do_, vec_occ_, dv_, vec_vir_, model->vec_do, model->vec_occ, model->vec_dv, model->vec_vir) * coef;
-	std::chrono::duration<double> dur = iclock::now() - start;
-	std::cout << "ovl elapsed = " << dur.count() << std::endl;
 
 	// Lowdin-orthoginalization
 	overlap *= sqrtmat_sympd( overlap.t() * overlap );
@@ -83,7 +74,6 @@ void FSSH::evolve_nucl() {
 	// instantaneous adiabatic energies and equilibrium population
 	E = join_cols( vec{model->ev_H}, model->val_cis_sub );
 	rho_eq = exp(-E/kT) / accu( exp(-E/kT) );
-	std::cout << "end evolve_nucl" << std::endl;
 }
 
 cx_mat FSSH::L_rho(cx_mat const& rho_) {
@@ -165,18 +155,14 @@ void FSSH::collect() {
 
 void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
-		std::cout << "before evolve_nucl" << std::endl;
 		evolve_nucl();
 		has_hop = 0;
 		for (arma::uword i = 0; i != rcq; ++i) {
-			std::cout << "before evolve_elec" << std::endl;
 			evolve_elec();
-			std::cout << "after evolve_elec" << std::endl;
 			if (!has_hop)
 				hop();
 		}
 		collect();
-		std::cout << counter << "/" << ntc << " completed" << std::endl;
 	}
 }
 

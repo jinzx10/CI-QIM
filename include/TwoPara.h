@@ -6,26 +6,31 @@
 
 struct TwoPara
 {
-	using PES = std::function<double(double)>;
-	using Cpl = std::function<arma::vec(double)>;
+	using d2d = std::function<double(double)>;
 
-	TwoPara(	PES						E_mpt_,
-				PES						E_fil_,
+	TwoPara(	d2d						E_mpt_,
+				d2d						E_fil_,
 				arma::vec const&		bath_,
-				Cpl						cpl_,
+				arma::vec const&		cpl_,
 				arma::uword const&		n_occ_		);
 
-	PES					E_mpt;
-	PES					E_fil;
+	d2d					E_mpt;
+	d2d					E_fil;
+	d2d					E_imp;
+	d2d					dE_mpt;
+	d2d					dE_imp;
+
 	arma::vec			bath;
-	Cpl					cpl;
+	arma::vec			cpl;
+
 	arma::uword			n_occ;
 	arma::uword 		n_vir;
 	arma::uword			n_bath;
 	arma::uword			sz_sub;
-	arma::span			idx_occ;
-	arma::span 			idx_vir;
 	double				dE_bath_avg;
+
+	arma::span			span_occ;
+	arma::span 			span_vir;
 
 	void				set_and_calc(double const& x);
 	void				set_and_calc_cis_sub(double const& x);
@@ -39,19 +44,18 @@ struct TwoPara
 	double 				ev_H;
 
 	void				rotate_orb();
-	void				subrotate(arma::mat const& vec_sub, arma::mat const& H_, double& val_d, arma::vec& vec_d, arma::mat& vec_other, arma::sp_mat& H_bath, arma::mat& H_d_bath);
+	void				subrotate(arma::mat const& vec_sub, double& val_d, arma::vec& vec_d, arma::mat& vec_other, arma::sp_mat& H_bath, arma::mat& H_d_bath);
+	// o(v) stands for occupied (virtual) except do(dv)
 	double				val_do;
 	double 				val_dv;
-	arma::sp_mat		Ho;
-	arma::sp_mat 		Hv;
-	arma::mat			H_do_occ;
-	arma::mat 			H_dv_vir;
-
-	// rotated vectors, used to calculate derivative coupling
 	arma::vec			vec_do;
 	arma::vec			vec_dv;
-	arma::mat			vec_occ;
-	arma::mat			vec_vir;
+	arma::mat			vec_o;
+	arma::mat			vec_v;
+	arma::sp_mat		H_o; // diagonal 
+	arma::sp_mat 		H_v; // diagonal
+	arma::mat			H_do_o;
+	arma::mat 			H_dv_v;
 
 	arma::mat			vec_all_rot();
 	arma::uvec			idx_gnd();
@@ -70,10 +74,10 @@ struct TwoPara
 	arma::vec 			Gamma;
 
 	// calculate without changing contents in the class
-	arma::mat			H_(double const& x_);
-	double				force_(unsigned int const& state_);
+	//arma::mat			H_tmp(double const& x_);
+	double				force(arma::uword const& state_);
 	arma::vec			force_();
-	double				force_(double const& x_, unsigned int const& state_);
+	double				force_(double const& x_, arma::uword const& state_);
 	arma::cx_mat		dc_();
 };
 
