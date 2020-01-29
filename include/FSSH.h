@@ -9,10 +9,9 @@ struct FSSH
 	FSSH(	TwoPara*					model_,
 			double			const&		mass_,
 			double			const&		dtc_,
-			arma::uword		const& 		rcq_, // ratio between dtc and dtq
 			arma::uword		const& 		ntc_,
 			double			const& 		kT_,
-			double 			const& 		gamma_ // external phononic friction
+			double 			const& 		gamma_
 	);
 
 	void				initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
@@ -20,6 +19,7 @@ struct FSSH
 
 	void				evolve_nucl(); // Velocity Verlet
 	void 				evolve_elec(); // Runge-Kutta
+	void				calc_dtq();
 	void 				hop();
 	void 				collect();
 	void				clear();
@@ -31,11 +31,11 @@ struct FSSH
 	TwoPara*			model;
 	double				mass;
 	double 				dtc;
-	double 				dtq;
-	arma::uword			rcq;
-	arma::uword 		ntc;
+	double 				dtq; // calculated after each classical time step
+	arma::uword			rcq; // dtc/dtq
+	arma::uword 		ntc; // number of classical time steps
 	double				kT;
-	double 				gamma;
+	double 				gamma; // external phononic friction
 
 	arma::uword			state;
 	double				x;
@@ -45,6 +45,7 @@ struct FSSH
 	arma::mat			T; // time-derivative matrix, <p|(d/dt)q>
 	arma::uword			sz; // size of the electronic basis
 	arma::span			span_cis;
+	arma::vec			E_adi;
 	arma::vec			rho_eq; // instantaneous equilibrium population
 
 	arma::uword			counter;

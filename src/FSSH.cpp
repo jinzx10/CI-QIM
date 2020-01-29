@@ -5,22 +5,21 @@
 #include <fermi.h>
 #include <chrono>
 #include <bcast_op.h>
+#include <min.h>
 
 using namespace arma;
 
 FSSH::FSSH(		TwoPara*					model_,
 				double			const&		mass_,
 				double			const&		dtc_,
-				arma::uword		const& 		rcq_,
 				arma::uword		const& 		ntc_,
 				double			const&		kT_,
 				double			const&		gamma_		):
-	model(model_), mass(mass_), dtc(dtc_), rcq(rcq_), ntc(ntc_),
+	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
 	state(0), x(0), v(0), rho(cx_mat{}), counter(0), has_hop(false),
 	x_t(zeros(ntc)), v_t(zeros(ntc)), state_t(zeros<uvec>(ntc)), E_t(zeros(ntc))
 {
-	dtq = dtc / rcq;
 	sz = model->sz_rel;
 	span_cis = span(1, sz-1);
 }
@@ -68,13 +67,22 @@ void FSSH::evolve_nucl() {
 	T = real( logmat(overlap) ) / dtc;
 	
 	// instantaneous adiabatic energies and equilibrium population
-	rho_eq = exp(-model->E_rel() / kT) / accu( exp(-model->E_rel() / kT) );
+	E_adi = model->E_rel();
+	rho_eq = exp(-E_adi/kT) / accu( exp(-E_adi/kT) );
+}
+
+void FSSH::calc_dtq() {
+	double dtq1 = 0.02 / abs(T).max();
+	double dtq2 = 0.02 / abs(E_adi - mean(E_adi)).max();
+	dtq = min(dtc, dtq1, dtq2);
+	rcq = dtc / dtq;
+	dtq = (rcq > 1) ? dtc / rcq : dtc;
 }
 
 double FSSH::energy() {
 	double E_kin = 0.5 * mass * v * v;
 	double E_pot = model->E_mpt(x);
-	double E_elec = model->E_rel(state);
+	double E_elec = E_adi(state);
 	return E_kin + E_pot + E_elec;
 }
 
@@ -94,7 +102,8 @@ cx_mat FSSH::L_rho(cx_mat const& rho_) {
 
 cx_mat FSSH::drho_dt(cx_mat const& rho_) {
 	std::complex<double> I{0.0, 1.0};
-	return -I * rho_ % bcast_op(model->E_rel(), model->E_rel().t(), std::minus<>()) - (T * rho_ - rho_ * T) - L_rho(rho_);
+	return -I * rho_ % bcast_op(E_adi, E_adi.t(), std::minus<>()) 
+		- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
 void FSSH::evolve_elec() {
@@ -135,7 +144,7 @@ void FSSH::hop() {
 	if ( target == sz ) // no hopping happens
 		return;
 
-	double dE = model->E_rel(target) - model->E_rel(state);
+	double dE = E_adi(target) - E_adi(state);
 	if ( dE <= 0.5 * mass * v * v) { // successful hops
 		v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
 		state = target;
@@ -165,6 +174,7 @@ void FSSH::clear() {
 void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
 		evolve_nucl();
+		calc_dtq();
 		has_hop = 0;
 		for (arma::uword i = 0; i != rcq; ++i) {
 			evolve_elec();
