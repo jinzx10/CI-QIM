@@ -122,7 +122,9 @@ int main() {
 		if (status) {
 			datadir = datadir2;
 			command = "mkdir -p " + datadir2;
-			std::system(command.c_str());
+			status = std::system(command.c_str());
+			if (status)
+				datadir = "";
 		}
 
 		state_t.save(datadir + "state.txt", raw_ascii);
