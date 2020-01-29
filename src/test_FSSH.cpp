@@ -48,7 +48,7 @@ int main() {
 	uword n_vir = n_bath + 1 - n_occ;
 	uword sz_sub = n_occ + n_vir;
 
-	double hybrid = 0.001;
+	double hybrid = 0.0005;
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
@@ -56,11 +56,11 @@ int main() {
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
-	int n_trajs = 48;
+	int n_trajs = 480;
 	int n_trajs_local = n_trajs / nprocs;
 
 	double dtc = 10;
-	uword ntc = 10;
+	uword ntc = 500;
 	double kT = 0.005;
 	//double fric_gamma = 2.0 * mass * omega;
 	double fric_gamma = 0;

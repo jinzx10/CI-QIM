@@ -37,6 +37,8 @@ void FSSH::initialize(bool const& state0, double const& x0, double const& v0, cx
 	v = v0;
 	rho = rho0;
 	model->set_and_calc(x);
+	E_adi = model->E_rel().head(sz);
+	rho_eq = exp(-E_adi/kT) / accu( exp(-E_adi/kT) );
 	collect();
 }
 
@@ -186,7 +188,7 @@ void FSSH::propagate() {
 				hop();
 		}
 		collect();
-		std::cout << counter << "/" << ntc << " finished" << std::endl;
+		//std::cout << counter << "/" << ntc << " finished" << std::endl;
 	}
 }
 
