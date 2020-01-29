@@ -22,7 +22,25 @@ T join(std::initializer_list< std::initializer_list<T> > m) {
 	return z;
 }
 
-inline arma::uvec cat() { return arma::uvec{}; }
+inline arma::mat join_d(arma::mat const& m) {
+	return m;
+}
+
+inline arma::mat join_d(arma::mat const& m1, arma::mat const& m2) {
+    return join_cols(
+            join_rows(m1, arma::zeros(m1.n_rows, m2.n_cols)),
+            join_rows(arma::zeros(m2.n_rows, m1.n_cols), m2) );
+}
+
+template <typename ...Ts>
+arma::mat join_d(arma::mat const& m, Ts const& ...args) {
+    return join_d(m, join_d(args...));
+}
+
+
+inline arma::uvec cat() {
+	return arma::uvec{}; 
+}
 
 template <typename T>
 arma::uvec cat(T const& i) {

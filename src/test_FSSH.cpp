@@ -18,8 +18,10 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
-	std::string command = "mkdir -p " + datadir;
+	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
+	std::string command = "mkdir -p " + datadir1;
+	std::string datadir = datadir1;
+	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/";
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -54,18 +56,15 @@ int main() {
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
-	int n_trajs = 3;
+	int n_trajs = 48;
 	int n_trajs_local = n_trajs / nprocs;
 
 	double dtc = 10;
-	double dtq_est = 20;
-	uword rcq = dtc / dtq_est;
-	rcq = (rcq >= 1) ? rcq : 1;
 	uword ntc = 10;
 	double kT = 0.005;
 	//double fric_gamma = 2.0 * mass * omega;
 	double fric_gamma = 0;
-	FSSH fssh(&model, mass, dtc, rcq, ntc, kT, fric_gamma);
+	FSSH fssh(&model, mass, dtc, ntc, kT, fric_gamma, 2);
 
 	// local data
 	mat x_local = arma::zeros(ntc, n_trajs_local);
@@ -94,11 +93,12 @@ int main() {
 	double sigma_v = std::sqrt(omega/mass/2.0);
 	arma::arma_rng::set_seed_random();
 
+	arma::uword sz_rho = 2;
 	for (int i = 0; i != n_trajs_local; ++i) {
 		uword state0 = 0; 
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn()*sigma_v;
-		cx_mat rho0 = zeros<cx_mat>(sz_sub, sz_sub);
+		cx_mat rho0 = zeros<cx_mat>(sz_rho, sz_rho);
 		rho0(0,0) = 1.0;
 		fssh.initialize(state0, x0, v0, rho0);
 		fssh.propagate();
@@ -119,8 +119,11 @@ int main() {
 	////////////////////////////////////////////////////////////
 	if (id == 0) {
 		bool status = std::system(command.c_str());
-		if (status)
-			datadir = "";
+		if (status) {
+			datadir = datadir2;
+			command = "mkdir -p " + datadir2;
+			std::system(command.c_str());
+		}
 
 		state_t.save(datadir + "state.txt", raw_ascii);
 		x_t.save(datadir + "x.txt", raw_ascii);

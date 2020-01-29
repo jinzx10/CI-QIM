@@ -6,10 +6,14 @@ using namespace arma;
 void adj_phase(mat const& vecs_old, mat& vecs_new) {
 	mat ovl = vecs_old.t() * vecs_new;
 	for (uword j = 0; j != ovl.n_cols; ++j) {
+		if (ovl(j,j) < 0)
+			vecs_new.col(j) *= -1;
+		/*
 		uword i = abs(ovl.col(j)).index_max();
 		if ( ovl(i,j) < 0 ) {
 			vecs_new.col(j) *= -1;
 		}
+		*/
 	}
 }
 

@@ -9,27 +9,33 @@
 
 using namespace arma;
 
-FSSH::FSSH(		TwoPara*					model_,
-				double			const&		mass_,
-				double			const&		dtc_,
-				arma::uword		const& 		ntc_,
-				double			const&		kT_,
-				double			const&		gamma_		):
+FSSH::FSSH( 
+		TwoPara*					model_,
+		double			const&		mass_,
+		double			const&		dtc_,
+		uword			const& 		ntc_,
+		double			const&		kT_,
+		double			const&		gamma_,
+		uword			const&		sz_ 
+):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
-	state(0), x(0), v(0), rho(cx_mat{}), counter(0), has_hop(false),
-	x_t(zeros(ntc)), v_t(zeros(ntc)), state_t(zeros<uvec>(ntc)), E_t(zeros(ntc))
-{
-	sz = model->sz_rel;
-	span_cis = span(1, sz-1);
-}
+	x(0), v(0), F_pes(0),
+	sz( (sz_) ? sz_ : model->sz_rel ),
+	state(0), rho(zeros<cx_mat>(sz, sz)), T(zeros(sz, sz)),
+	span_cis(span(1, sz-1)),
+	E_adi(zeros(sz)), rho_eq(zeros(sz)),
+	counter(0), has_hop(false),
+	x_t(zeros(ntc)), v_t(zeros(ntc)), E_t(zeros(ntc)),
+	state_t(zeros<uvec>(ntc))
+{}
 
-void FSSH::initialize(bool const& state0, double const& x0, double const& v0, arma::cx_mat const& rho0) {
+void FSSH::initialize(bool const& state0, double const& x0, double const& v0, cx_mat const& rho0) {
+	clear();
 	state = state0;
 	x = x0;
 	v = v0;
 	rho = rho0;
-	clear();
 	model->set_and_calc(x);
 	collect();
 }
@@ -40,8 +46,7 @@ void FSSH::evolve_nucl() {
 	vec dv_ = model->vec_dv;
 	mat vec_o_ = model->vec_o;
 	mat vec_v_ = model->vec_v;
-	mat coef_ = join<mat>( { { vec{1}		 , zeros(1, sz-1)	   },
-							 { zeros(sz-1, 1), model->vec_cis_sub  } } );
+	mat coef_ = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
 
 	// Velocity-Verlet (with external phononic friction)
 	double F_fric = -gamma * v;
@@ -55,8 +60,7 @@ void FSSH::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 
 	// calculate the time derivative coupling
-	mat coef = join<mat>( { { vec{1}		, zeros(1, sz-1)	  },
-							{ zeros(sz-1, 1), model->vec_cis_sub  } } );
+	mat coef = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
 	adj_phase(coef_, coef);
 	mat overlap = coef_.t() * ovl(do_, vec_o_, dv_, vec_v_, model->vec_do, model->vec_o, model->vec_dv, model->vec_v) * coef;
 
@@ -67,7 +71,7 @@ void FSSH::evolve_nucl() {
 	T = real( logmat(overlap) ) / dtc;
 	
 	// instantaneous adiabatic energies and equilibrium population
-	E_adi = model->E_rel();
+	E_adi = model->E_rel().head(sz);
 	rho_eq = exp(-E_adi/kT) / accu( exp(-E_adi/kT) );
 }
 
@@ -91,12 +95,12 @@ cx_mat FSSH::L_rho(cx_mat const& rho_) {
 
 	vec L_diag = zeros(sz);
 	vec rho_diag = real(rho_.diag());
-	L_diag(span_cis) = model->Gamma % ( rho_diag(span_cis) - rho_eq(span_cis) );
+	L_diag(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
 	L_diag(0) = -accu( L_diag(span_cis) );
 
 	tmp.diag() = conv_to<cx_vec>::from(L_diag);
-	tmp(0, span_cis) = 0.5 * model->Gamma.t() % rho_(0, span_cis);
-	tmp(span_cis, 0) = 0.5 * model->Gamma % rho_(span_cis, 0);
+	tmp(0, span_cis) = 0.5 * model->Gamma.head(sz-1).t() % rho_(0, span_cis);
+	tmp(span_cis, 0) = 0.5 * model->Gamma.head(sz-1) % rho_(span_cis, 0);
 	return tmp;
 }
 
@@ -124,7 +128,7 @@ void FSSH::hop() {
 		q(0) = model->Gamma(state-1) * ( rho(state, state).real() - rho_eq(state) );
 	} else {
 		vec rho_diag = real(rho.diag());
-		q(span_cis) = model->Gamma % ( rho_diag(span_cis) - rho_eq(span_cis) );
+		q(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
 	}
 
 	// hopping probability to each state
@@ -176,7 +180,7 @@ void FSSH::propagate() {
 		evolve_nucl();
 		calc_dtq();
 		has_hop = 0;
-		for (arma::uword i = 0; i != rcq; ++i) {
+		for (uword i = 0; i != rcq; ++i) {
 			evolve_elec();
 			if (!has_hop)
 				hop();
