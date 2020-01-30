@@ -5,7 +5,7 @@ ODIR 			= ${ROOTDIR}/obj
 SDIR 			= ${ROOTDIR}/src
 
 CC 				= mpicxx
-CPPFLAGS 		= -I${IDIR} -O2 
+CPPFLAGS 		= -I${IDIR} -O2 -DDEBUG_MODE
 LDFLAGS 		= -larmadillo
 
 vpath %.h ${IDIR}

@@ -38,7 +38,7 @@ void FSSH::initialize(bool const& state0, double const& x0, double const& v0, cx
 	rho = rho0;
 	model->set_and_calc(x);
 	E_adi = model->E_rel().head(sz);
-	rho_eq = exp(-E_adi/kT) / accu( exp(-E_adi/kT) );
+	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
 	collect();
 }
 
@@ -74,7 +74,7 @@ void FSSH::evolve_nucl() {
 	
 	// instantaneous adiabatic energies and equilibrium population
 	E_adi = model->E_rel().head(sz);
-	rho_eq = exp(-E_adi/kT) / accu( exp(-E_adi/kT) );
+	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
 }
 
 void FSSH::calc_dtq() {
@@ -137,6 +137,25 @@ void FSSH::hop() {
 	vec g_hop = g + q;
 	vec P_hop = dtq * g_hop % (g_hop > 0) / rho(state, state).real();
 
+#ifdef DEBUG_MODE
+	std::cout << "current state = " << state << std::endl;
+
+	std::cout << "rho: " << std::endl;
+	rho.print();
+
+	std::cout << "T: " << std::endl;
+	T.print();
+
+	std::cout << "g: " << std::endl;
+	g.t().print();
+
+	std::cout << "q: " << std::endl;
+	q.t().print();
+
+	std::cout << "P_hop: " << std::endl;
+	P_hop.t().print();
+#endif
+
 	// determine the destination state of hopping
 	vec P_cumu = cumsum(P_hop);
 	uword target = 0;
@@ -186,9 +205,16 @@ void FSSH::propagate() {
 			evolve_elec();
 			if (!has_hop)
 				hop();
+#ifdef DEBUG_MODE
+			std::cout << "elec: " << i+1 << "/" << rcq 
+				<< " finished" << std::endl;
+#endif
 		}
 		collect();
-		//std::cout << counter << "/" << ntc << " finished" << std::endl;
+#ifdef DEBUG_MODE
+		std::cout << "nucl: " << counter << "/" << ntc 
+			<< " finished" << std::endl;
+#endif
 	}
 }
 
