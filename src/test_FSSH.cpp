@@ -18,24 +18,26 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
-	std::string command = "mkdir -p " + datadir;
+	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/debug/";
+	std::string command = "mkdir -p " + datadir1;
+	std::string datadir = datadir1;
+	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/debug/";
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
 	////////////////////////////////////////////////////////////
-	double x0_mpt = 2;
-	double x0_fil = 2.3;
-	double omega = 0.002;
-	double mass = 14000;
-	double dE_fil = 0.0000;
+	double x0_mpt = 0;
+	double x0_fil = 20.6097;
+	double omega = 0.0002;
+	double mass = 2000;
+	double dE_fil = -0.0038;
 	
 	auto E_mpt = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_mpt) * (x - x0_mpt);};
 	auto E_fil = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_fil) * (x - x0_fil) + dE_fil;};
 
-	double W = 0.05;
+	double W = 0.1;
 	double bath_min = -W;
 	double bath_max = W;
 	uword n_bath = 400;
@@ -46,7 +48,7 @@ int main() {
 	uword n_vir = n_bath + 1 - n_occ;
 	uword sz_sub = n_occ + n_vir;
 
-	double hybrid = 0.001;
+	double hybrid = 0.0016;
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
@@ -54,18 +56,23 @@ int main() {
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
-	int n_trajs = 3;
+
+#ifdef DEBUG_MODE
+	int n_trajs = 48;
+	uword ntc = 20;
+	double fric_gamma = 0;
+#else
+	int n_trajs = 480;
+	uword ntc = 500;
+	double fric_gamma = 2.0 * mass * omega;
+#endif
+
+	double dtc = 2000;
+	double kT = 9.5e-4;
 	int n_trajs_local = n_trajs / nprocs;
 
-	double dtc = 10;
-	double dtq_est = 20;
-	uword rcq = dtc / dtq_est;
-	rcq = (rcq >= 1) ? rcq : 1;
-	uword ntc = 10;
-	double kT = 0.005;
-	//double fric_gamma = 2.0 * mass * omega;
-	double fric_gamma = 0;
-	FSSH fssh(&model, mass, dtc, rcq, ntc, kT, fric_gamma);
+	arma::uword sz_rho = 2;
+	FSSH fssh(&model, mass, dtc, ntc, kT, fric_gamma, sz_rho);
 
 	// local data
 	mat x_local = arma::zeros(ntc, n_trajs_local);
@@ -98,7 +105,7 @@ int main() {
 		uword state0 = 0; 
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn()*sigma_v;
-		cx_mat rho0 = zeros<cx_mat>(sz_sub, sz_sub);
+		cx_mat rho0 = zeros<cx_mat>(sz_rho, sz_rho);
 		rho0(0,0) = 1.0;
 		fssh.initialize(state0, x0, v0, rho0);
 		fssh.propagate();
@@ -119,8 +126,13 @@ int main() {
 	////////////////////////////////////////////////////////////
 	if (id == 0) {
 		bool status = std::system(command.c_str());
-		if (status)
-			datadir = "";
+		if (status) {
+			datadir = datadir2;
+			command = "mkdir -p " + datadir2;
+			status = std::system(command.c_str());
+			if (status)
+				datadir = "";
+		}
 
 		state_t.save(datadir + "state.txt", raw_ascii);
 		x_t.save(datadir + "x.txt", raw_ascii);
