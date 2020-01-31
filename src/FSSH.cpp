@@ -44,11 +44,19 @@ void FSSH::initialize(bool const& state0, double const& x0, double const& v0, cx
 
 void FSSH::evolve_nucl() {
 	// store the necessary data for the time derivative coupling calculation
-	vec do_ = model->vec_do;
-	vec dv_ = model->vec_dv;
-	mat vec_o_ = model->vec_o;
-	mat vec_v_ = model->vec_v;
-	mat coef_ = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+	if (counter == 1) {
+		vec_do_ = model->vec_do;
+		vec_dv_ = model->vec_dv;
+		vec_o_ = model->vec_o;
+		vec_v_ = model->vec_v;
+		coef_ = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+	} else {
+		vec_do_ = vec_do;
+		vec_dv_ = vec_dv;
+		vec_o_ = vec_o;
+		vec_v_ = vec_v;
+		coef_ = coef;
+	}
 
 	// Velocity-Verlet (with external phononic friction)
 	double F_fric = -gamma * v;
@@ -62,12 +70,23 @@ void FSSH::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 
 	// calculate the time derivative coupling
-	mat coef = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+	vec_do = model->vec_do;
+	vec_dv = model->vec_dv;
+	vec_o = model->vec_o;
+	vec_v = model->vec_v;
+	coef = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+
+	adj_phase(vec_do_, vec_do);
+	adj_phase(vec_dv_, vec_dv);
+	adj_phase(vec_o_, vec_o);
+	adj_phase(vec_v_, vec_v);
 	adj_phase(coef_, coef);
-	mat overlap = coef_.t() * ovl(do_, vec_o_, dv_, vec_v_, model->vec_do, model->vec_o, model->vec_dv, model->vec_v) * coef;
+
+	mat overlap = coef_.t() * ovl(vec_do_, vec_o_, vec_dv_, vec_v_, 
+			vec_do, vec_o, vec_dv, vec_v) * coef;
 
 	// Lowdin-orthoginalization
-	overlap *= sqrtmat_sympd( overlap.t() * overlap );
+	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
 
 	// time derivative coupling matrix
 	T = real( logmat(overlap) ) / dtc;
@@ -137,7 +156,7 @@ void FSSH::hop() {
 	vec g_hop = g + q;
 	vec P_hop = dtq * g_hop % (g_hop > 0) / rho(state, state).real();
 
-#ifdef DEBUG_MODE
+#ifdef FULL_DEBUG_MODE
 	std::cout << "current state = " << state << std::endl;
 
 	std::cout << "rho: " << std::endl;
@@ -205,13 +224,13 @@ void FSSH::propagate() {
 			evolve_elec();
 			if (!has_hop)
 				hop();
-#ifdef DEBUG_MODE
+#ifdef FULL_DEBUG_MODE
 			std::cout << "elec: " << i+1 << "/" << rcq 
 				<< " finished" << std::endl;
 #endif
 		}
 		collect();
-#ifdef DEBUG_MODE
+#ifdef FULL_DEBUG_MODE
 		std::cout << "nucl: " << counter << "/" << ntc 
 			<< " finished" << std::endl;
 #endif

@@ -58,6 +58,18 @@ struct FSSH
 	arma::vec					v_t;
 	arma::vec					E_t;
 	arma::uvec					state_t;
+
+	private:
+	arma::vec					vec_do_;
+	arma::vec					vec_dv_;
+	arma::mat					vec_o_;
+	arma::mat					vec_v_;
+	arma::mat					coef_;
+	arma::vec					vec_do;
+	arma::vec					vec_dv;
+	arma::mat					vec_o;
+	arma::mat					vec_v;
+	arma::mat					coef;
 };
 
 #endif

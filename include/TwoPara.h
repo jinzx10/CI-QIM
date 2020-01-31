@@ -70,6 +70,7 @@ struct TwoPara
 	arma::vec			E_rel();
 	double				force(arma::uword const& state_);
 	arma::vec			force();
+	arma::mat			dc(arma::uword const& sz_);
 };
 
 

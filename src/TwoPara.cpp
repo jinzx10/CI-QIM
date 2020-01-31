@@ -2,6 +2,7 @@
 #include <gauss.h>
 #include <join.h>
 #include <grad.h>
+#include <dc.h>
 
 using namespace arma;
 
@@ -137,4 +138,24 @@ vec TwoPara::force() {
 	
 	return f;
 }
+
+mat TwoPara::dc(uword const& sz) {
+	double dx = 1e-3;
+	mat coef_ = join_d(vec{1}, vec_cis_sub.head_cols(sz-1));
+
+	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
+	model_.set_and_calc_cis_sub(x+dx);
+	mat coef = join_d(vec{1}, model_.vec_cis_sub.head_cols(sz-1));
+
+	adj_phase(coef_, coef);
+
+	mat overlap = coef_.t() * ovl(vec_do, vec_o, vec_dv, vec_v, model_.vec_do, model_.vec_o, model_.vec_dv, model_.vec_v) * coef;
+
+	// Lowdin-orthoginalization
+	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
+
+	// derivative coupling matrix
+	return real( logmat(overlap) ) / dx;
+}
+
 

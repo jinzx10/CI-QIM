@@ -18,10 +18,16 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/debug/";
+	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
 	std::string command = "mkdir -p " + datadir1;
+	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/";
+
+#ifdef DEBUG_MODE
+	datadir1 += "debug/";
+	datadir2 += "debug/";
+#endif
+
 	std::string datadir = datadir1;
-	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/debug/";
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -58,7 +64,7 @@ int main() {
 	////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_MODE
-	int n_trajs = 48;
+	int n_trajs = 96;
 	uword ntc = 20;
 	double fric_gamma = 0;
 #else
@@ -67,7 +73,7 @@ int main() {
 	double fric_gamma = 2.0 * mass * omega;
 #endif
 
-	double dtc = 2000;
+	double dtc = 500;
 	double kT = 9.5e-4;
 	int n_trajs_local = n_trajs / nprocs;
 
@@ -97,14 +103,17 @@ int main() {
 
 	// Wigner quasi-probability of the harmonic ground state:
 	// exp(-m*omega*x^2/hbar) * exp(-p^2/m/omega/hbar)
-	double sigma_x = std::sqrt(0.5/mass/omega);
-	double sigma_v = std::sqrt(omega/mass/2.0);
+	//double sigma_x = std::sqrt(0.5/mass/omega);
+	//double sigma_v = std::sqrt(omega/mass/2.0);
+	double sigma_x = std::sqrt( 0.5 / mass / omega / std::tanh(omega/2.0/kT) );
+	double sigma_p = std::sqrt( mass * omega / 2.0 / std::tanh(omega/2.0/kT) );
 	arma::arma_rng::set_seed_random();
 
 	for (int i = 0; i != n_trajs_local; ++i) {
 		uword state0 = 0; 
 		double x0 = x0_mpt + arma::randn()*sigma_x;
-		double v0 = arma::randn()*sigma_v;
+		//double v0 = arma::randn()*sigma_v;
+		double v0 = arma::randn() * sigma_p / mass;
 		cx_mat rho0 = zeros<cx_mat>(sz_rho, sz_rho);
 		rho0(0,0) = 1.0;
 		fssh.initialize(state0, x0, v0, rho0);
