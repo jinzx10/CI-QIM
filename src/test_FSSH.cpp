@@ -18,10 +18,10 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
+	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/debug/";
 	std::string command = "mkdir -p " + datadir1;
 	std::string datadir = datadir1;
-	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/";
+	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/debug/";
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -58,8 +58,8 @@ int main() {
 	////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_MODE
-	int n_trajs = 1;
-	uword ntc = 30;
+	int n_trajs = 48;
+	uword ntc = 20;
 	double fric_gamma = 0;
 #else
 	int n_trajs = 480;
@@ -67,7 +67,7 @@ int main() {
 	double fric_gamma = 2.0 * mass * omega;
 #endif
 
-	double dtc = 10;
+	double dtc = 2000;
 	double kT = 9.5e-4;
 	int n_trajs_local = n_trajs / nprocs;
 
