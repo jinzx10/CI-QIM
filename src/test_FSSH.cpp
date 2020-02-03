@@ -18,16 +18,20 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
+	std::string date = "20200203/";
 	std::string datadir1 = "/home/zuxin/job/CI-QIM/data/test_FSSH/";
-	std::string command = "mkdir -p " + datadir1;
 	std::string datadir2 = "/data/home/jinzx10/job/CI-QIM/data/test_FSSH/";
 
 #ifdef DEBUG_MODE
 	datadir1 += "debug/";
 	datadir2 += "debug/";
+#else
+	datadir1 += date;
+	datadir2 += date;
 #endif
 
 	std::string datadir = datadir1;
+	std::string command = "mkdir -p " + datadir1;
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -54,7 +58,8 @@ int main() {
 	uword n_vir = n_bath + 1 - n_occ;
 	uword sz_sub = n_occ + n_vir;
 
-	double hybrid = 0.0016;
+	//double hybrid = 0.0016; // 20200130
+	double hybrid = 0.00005;
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
@@ -69,7 +74,7 @@ int main() {
 	double fric_gamma = 0;
 #else
 	int n_trajs = 480;
-	uword ntc = 500;
+	uword ntc = 1500;
 	double fric_gamma = 2.0 * mass * omega;
 #endif
 
