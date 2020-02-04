@@ -16,7 +16,7 @@ int main() {
 
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/";
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/00016_800/";
 	std::string cmd;
 	const char* system_cmd = nullptr;
 	int status;
@@ -38,7 +38,7 @@ int main() {
 	double W = 0.1;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 400;
+	uword n_bath = 800;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	double dos = 1.0 / (bath(1) - bath(0));
 
@@ -50,7 +50,7 @@ int main() {
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	uword nx = 96*3;
-	vec xgrid = linspace(x0_mpt-0.5, x0_fil+0.5, nx);
+	vec xgrid = linspace(-10, 30, nx);
 	int local_nx = nx / nprocs;
 
 	// global

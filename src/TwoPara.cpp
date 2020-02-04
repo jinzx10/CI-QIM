@@ -140,7 +140,7 @@ vec TwoPara::force() {
 }
 
 mat TwoPara::dc(uword const& sz) {
-	double dx = 1e-3;
+	double dx = 1e-4;
 	mat coef_ = join_d(vec{1}, vec_cis_sub.head_cols(sz-1));
 
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
