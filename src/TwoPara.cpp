@@ -108,6 +108,17 @@ void TwoPara::calc_Gamma() {
 	Gamma = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
 }
 
+void TwoPara::calc_Gamma(uword const& sz) {
+	mat V_adi = vec_cis_sub.head_cols(sz).t() * join<sp_mat>( {
+			{ sp_mat( 1, (n_occ-1)*(n_vir-1) ) },
+			{ -kron( speye(n_vir-1, n_vir-1), sp_mat(H_do_o) ) },
+			{ kron( sp_mat(H_dv_v), speye(n_occ-1, n_occ-1) ) }
+	});
+	mat delta = gauss( val_cis_sub.head(sz), val_cis_bath.as_row(),
+			5.0*dE_bath_avg );
+	Gamma = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
+}
+
 double TwoPara::E_rel(uword const& state_) {
 	return (state_) ? val_cis_sub(state_-1) : ev_H;
 }

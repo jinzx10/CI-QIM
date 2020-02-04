@@ -63,6 +63,7 @@ struct TwoPara
 
 	void				calc_val_cis_bath();
 	void				calc_Gamma();
+	void				calc_Gamma(arma::uword const& sz_);
 	arma::vec			val_cis_bath;
 	arma::vec 			Gamma;
 

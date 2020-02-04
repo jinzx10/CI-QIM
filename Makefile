@@ -18,7 +18,7 @@ findmu_deps 	= fermi newtonroot
 dc_deps 		= TwoPara gauss
 dc_deps_h 		= join bcast_op
 TwoPara_deps 	= gauss dc
-TwoPara_deps_h 	= join bcast_op
+TwoPara_deps_h 	= join bcast_op arma_mpi_helper
 FSSH_deps 		= dc fermi TwoPara gauss
 FSSH_deps_h 	= join bcast_op
 
