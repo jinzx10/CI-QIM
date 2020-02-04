@@ -22,7 +22,7 @@ TwoPara_deps_h 	= join bcast_op arma_mpi_helper
 FSSH_deps 		= dc fermi TwoPara gauss
 FSSH_deps_h 	= join bcast_op
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH)
+exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH interp)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 
