@@ -2,7 +2,6 @@
 #include <dc.h>
 #include <join.h>
 #include <complex>
-#include <fermi.h>
 #include <chrono>
 #include <bcast_op.h>
 #include <min.h>

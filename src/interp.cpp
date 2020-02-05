@@ -11,7 +11,7 @@ double lininterp_linspace(double const& x0, vec const& x, vec const& y) {
 	if ( x0 > x(0) && x0 < x(x.n_elem-1) ) { // if x0 is within the range of x
 		i = (x0 - x(0)) / dx; 
 	} else {
-		if ( x0 > x(x.n_elem-1) )
+		if ( x0 >= x(x.n_elem-1) )
 			i = x.n_elem-2;
 	}
 	double k = ( y(i+1) - y(i) ) / dx;

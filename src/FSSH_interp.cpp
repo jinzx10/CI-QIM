@@ -1,4 +1,6 @@
 #include <FSSH_interp.h>
+#include <min.h>
+#include <bcast_op.h>
 
 using namespace arma;
 
@@ -12,7 +14,7 @@ FSSH_interp::FSSH_interp(
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
-	x(0), v(0), F_pes(0), sz( model->sz_elec ),
+	x(0), v(0), F_pes(0), sz( model->sz_elec ), span_exc( span(1,sz-1) ),
 	state(0), rho(zeros<cx_mat>(sz, sz)),
 	E_adi(zeros(sz)), rho_eq(zeros(sz)),
 	counter(0), has_hop(false),
@@ -43,11 +45,12 @@ void FSSH_interp::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 
 	// time derivative coupling matrix
-	T = real( logmat(overlap) ) / dtc;
+	T = v * model->dc(x);
 	
 	// instantaneous adiabatic energies and equilibrium population
-	E_adi = model->E_rel().head(sz);
+	E_adi = model->E_adi(x);
 	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
+	Gamma_rlx = vec{model->Gamma(x)};
 }
 
 void FSSH_interp::calc_dtq() {
@@ -60,9 +63,8 @@ void FSSH_interp::calc_dtq() {
 
 double FSSH_interp::energy() {
 	double E_kin = 0.5 * mass * v * v;
-	double E_pot = model->E_mpt(x);
 	double E_elec = E_adi(state);
-	return E_kin + E_pot + E_elec;
+	return E_kin + E_elec;
 }
 
 cx_mat FSSH_interp::L_rho(cx_mat const& rho_) {
@@ -70,12 +72,13 @@ cx_mat FSSH_interp::L_rho(cx_mat const& rho_) {
 
 	vec L_diag = zeros(sz);
 	vec rho_diag = real(rho_.diag());
-	L_diag(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
-	L_diag(0) = -accu( L_diag(span_cis) );
+
+	L_diag(span_exc) = Gamma_rlx % ( rho_diag(span_exc) - rho_eq(span_exc) );
+	L_diag(0) = -accu( L_diag(span_exc) );
 
 	tmp.diag() = conv_to<cx_vec>::from(L_diag);
-	tmp(0, span_cis) = 0.5 * model->Gamma.head(sz-1).t() % rho_(0, span_cis);
-	tmp(span_cis, 0) = 0.5 * model->Gamma.head(sz-1) % rho_(span_cis, 0);
+	tmp(0, span_exc) = 0.5 * Gamma_rlx.t() % rho_(0, span_exc);
+	tmp(span_exc, 0) = 0.5 * Gamma_rlx % rho_(span_exc, 0);
 	return tmp;
 }
 
@@ -103,7 +106,7 @@ void FSSH_interp::hop() {
 		q(0) = model->Gamma(state-1) * ( rho(state, state).real() - rho_eq(state) );
 	} else {
 		vec rho_diag = real(rho.diag());
-		q(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
+		q.tail(sz-1) = Gamma_rlx % ( rho_diag(span_exc) - rho_eq(span_exc) );
 	}
 
 	// hopping probability to each state
@@ -148,7 +151,7 @@ void FSSH_interp::hop() {
 		state = target;
 		has_hop = 1;
 	} else { // frustrated hops
-		double F_tmp = model->force(target);
+		double F_tmp = model->force(target, x);
 		if ( F_pes*F_tmp < 0 && F_tmp*v < 0  ) // velocity reveral
 			v = -v;
 	}

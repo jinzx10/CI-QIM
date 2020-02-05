@@ -42,11 +42,13 @@ struct FSSH_interp
 	double 						v;
 	double						F_pes;
 	arma::uword		const		sz; // size of the electronic basis
+	arma::span		const		span_exc; // indices of excited states
 	arma::uword					state;
 	arma::cx_mat				rho; // density matrix
 	arma::mat					T; // time-derivative matrix, <p|(d/dt)q>
 	arma::vec					E_adi;
 	arma::vec					rho_eq; // instantaneous equilibrium population
+	arma::vec					Gamma_rlx; // relaxation Gamma
 
 	arma::uword					counter;
 	bool						has_hop;
