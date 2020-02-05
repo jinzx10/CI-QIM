@@ -5,7 +5,7 @@ ODIR 			= ${ROOTDIR}/obj
 SDIR 			= ${ROOTDIR}/src
 
 CC 				= mpicxx
-CPPFLAGS 		= -I${IDIR} -O2 
+CPPFLAGS 		= -I${IDIR} -O2  -DDEBUG_MODE
 LDFLAGS 		= -larmadillo
 
 vpath %.h ${IDIR}
@@ -21,8 +21,12 @@ TwoPara_deps 	= gauss dc
 TwoPara_deps_h 	= join bcast_op arma_mpi_helper
 FSSH_deps 		= dc fermi TwoPara gauss
 FSSH_deps_h 	= join bcast_op
+TwoPara_interp_deps 	= interp
+TwoPara_interp_deps_h 	= join bcast_op arma_mpi_helper
+FSSH_interp_deps 		= TwoPara_interp interp
+FSSH_interp_deps_h 		= join bcast_op arma_mpi_helper
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH interp)
+exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH interp TwoPara_interp FSSH_interp)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 

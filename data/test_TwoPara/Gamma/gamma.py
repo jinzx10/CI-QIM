@@ -6,11 +6,9 @@ dirs = ['00016_800','00016_600','00016']
 
 for dir_ in dirs:
     xgrid = np.loadtxt(dir_+'/xgrid.txt')
-    dc = np.loadtxt(dir_+'/dc.txt')
-    plt.plot(xgrid, np.abs(dc[1,:]))
+    Gamma = np.loadtxt(dir_+'/Gamma.txt')
+    plt.plot(xgrid, Gamma[0,:])
 
-xgrid = np.loadtxt('00016_1000/xgrid.txt')
-dc = np.loadtxt('00016_1000/dc01.txt')
-plt.plot(xgrid, np.abs(dc))
-
+xgrid = np.loadtxt('./00016_1000/xgrid.txt')
+gamma = np.loadtxt('./00016_1000/Gamma.txt')
 plt.show()
