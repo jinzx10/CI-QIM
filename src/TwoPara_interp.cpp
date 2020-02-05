@@ -43,14 +43,17 @@ double TwoPara_interp::E_adi(uword const& state, double const& x) {
 	return (state) ? E1(x) : E0(x);
 }
 
+vec TwoPara_interp::E_adi(double const& x) {
+	return vec{E0(x), E1(x)};
+}
+
 double TwoPara_interp::force(uword const& state, double const& x) {
 	return (state) ? F1(x) : F0(x);
 }
 
-double TwoPara_interp::dc(uword const& state_i, uword const& state_j, double const& x) {
-	if ( state_i == state_j )
-		return 0.0;
-	return (state_j) ? dc01(x) : -dc01(x);
+mat TwoPara_interp::dc(double const& x) {
+	double d01 = dc01(x);
+	return mat{ {0.0, d01}, {-d01, 0.0} };
 }
 
 

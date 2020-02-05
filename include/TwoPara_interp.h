@@ -14,8 +14,9 @@ struct TwoPara_interp
 						arma::vec 	const&		Gamma_		);
 
 	double				E_adi(arma::uword const& state, double const& x);
+	arma::vec			E_adi(double const& x);
 	double				force(arma::uword const& state, double const& x);
-	double				dc(arma::uword const& state_i, arma::uword const& state_j, double const& x);
+	arma::mat			dc(double const& x);
 
 	double				E0(double const& x);
 	double				E1(double const& x);
@@ -23,6 +24,8 @@ struct TwoPara_interp
 	double				F1(double const& x);
 	double				dc01(double const& x);
 	double				Gamma(double const& x);
+
+	arma::uword			sz_elec = 2;
 
 	private:
 	arma::vec			xgrid_;
