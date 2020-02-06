@@ -1,6 +1,6 @@
 #include <findmu.h>
 #include <newtonroot.h>
-#include <fermi.h>
+#include <auxmath.h>
 
 using namespace arma;
 

@@ -3,6 +3,8 @@
 #include <mpi.h>
 #include <cstdlib>
 #include <arma_mpi_helper.h>
+#include <arma_helper.h>
+#include <auxmath.h>
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;
@@ -17,10 +19,9 @@ int main() {
 
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/0000025_1000/";
-	//std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/";
+	//std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/0000025_1000/";
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/";
 	std::string cmd;
-	const char* system_cmd = nullptr;
 	int status;
 
 	////////////////////////////////////////////////////////////
@@ -40,7 +41,7 @@ int main() {
 	double W = 0.1;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 1000;
+	uword n_bath = 400;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	double dos = 1.0 / (bath(1) - bath(0));
 
@@ -48,83 +49,79 @@ int main() {
 	uword n_vir = n_bath + 1 - n_occ;
 	uword sz_sub = n_occ + n_vir - 1;
 
-	double hybrid = 0.000025;
+	double hybrid = 0.0016;
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
-	uword nx = 32*3*10;
-	vec xgrid = linspace(-20, 40, nx);
-	int local_nx = nx / nprocs;
+	//uword nx = 32*3*10;
+	//vec xgrid = linspace(-20, 40, nx);
+	auto x_density = [] (double x) { 
+		return 9.01 + 90.0 * exp(-(x-8.0)*(x-8.0)/2.0);
+	};
+	vec xgrid = grid(-20, 40, x_density);
+	uword nx = xgrid.n_elem;
 
-	// global
+	int nx_local = nx / nprocs;
+
+	// global variables (only proc 0 will initialize them)
 	vec E0, E1, F0, F1, dc01, Gamma, n_imp;
 
-	// local
-	vec local_E0 = zeros(local_nx);
-	vec local_E1 = zeros(local_nx);
-	vec local_F0 = zeros(local_nx);
-	vec local_F1 = zeros(local_nx);
-	vec local_dc01 = zeros(local_nx);
-	vec local_Gamma = zeros(local_nx);
-	vec local_n_imp = zeros(local_nx);
-
-	uword sz_dc = 2;
-
 	if (id == 0) {
-		E0.zeros(nx);
-		E1.zeros(nx);
-		F0.zeros(nx);
-		F1.zeros(nx);
-		dc01.zeros(nx);
-		Gamma.zeros(nx);
-		n_imp.zeros(nx);
-
+		set_size( nx, E0, E1, F0, F1, dc01, Gamma, n_imp );
 		start = iclock::now();
 	}
 
+
+	// local variables and their initialization
+	vec E0_local, E1_local, F0_local, F1_local,
+		dc01_local, Gamma_local, n_imp_local;
+
+	set_size( nx_local, E0_local, E1_local, F0_local, F1_local,
+			dc01_local, Gamma_local, n_imp_local );
+
+
+	// Two parabola model
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
 
-	for (int i = 0; i != local_nx; ++i) {
-		double x = xgrid(id*local_nx+i);
+	for (int i = 0; i != nx_local; ++i) {
+		double x = xgrid(id*nx_local+i);
 		model.set_and_calc_cis_sub(x);
 		model.calc_val_cis_bath();
 		model.calc_Gamma(1);
 
-		local_E0(i) = model.ev_H + E_mpt(x);
-		local_E1(i) = model.val_cis_sub(0) + E_mpt(x);
-		local_F0(i) = model.force(0);
-		local_F1(i) = model.force(1);
-		local_dc01(i) = model.dc(sz_dc)(0,1);
-		local_Gamma(i) = model.Gamma(0);
-		local_n_imp(i) = model.ev_n;
+		E0_local(i) = model.ev_H + E_mpt(x);
+		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
+		F0_local(i) = model.force(0);
+		F1_local(i) = model.force(1);
+		dc01_local(i) = model.dc(2)(0,1);
+		Gamma_local(i) = model.Gamma(0);
+		n_imp_local(i) = model.ev_n;
 
-		std::cout << id*local_nx+i+1 << "/" << nx << " finished" << std::endl;
+		std::cout << id*nx_local+i+1 << "/" << nx << " finished" << std::endl;
 	}
 
-	::gather(local_E0, E0, local_E1, E1, local_F0, F0, local_F1, F1, 
-			local_dc01, dc01, local_Gamma, Gamma, local_n_imp, n_imp);
-
-	::MPI_Barrier(MPI_COMM_WORLD);
+	gather( E0_local, E0, E1_local, E1, F0_local, F0, F1_local, F1,
+			dc01_local, dc01, Gamma_local, Gamma, n_imp_local, n_imp );
 
 	if (id == 0) {
 		cmd = "mkdir -p " + datadir;
-		system_cmd = cmd.c_str();
-		status = std::system(system_cmd);
+		status = std::system(cmd.c_str());
 
-		xgrid.save(datadir+"xgrid.txt", arma::raw_ascii);
-		E0.save(datadir+"E0.txt", arma::raw_ascii);
-		E1.save(datadir+"E1.txt", arma::raw_ascii);
-		F0.save(datadir+"F0.txt", arma::raw_ascii);
-		F1.save(datadir+"F1.txt", arma::raw_ascii);
-		dc01.save(datadir+"dc01.txt", arma::raw_ascii);
-		Gamma.save(datadir+"Gamma.txt", arma::raw_ascii);
-		n_imp.save(datadir+"n_imp.txt", arma::raw_ascii);
+		arma_save<raw_ascii>( datadir,
+				xgrid, "xgrid.txt", 
+				E0, "E0.txt", 
+				E1, "E1.txt",
+				F0, "F0.txt",
+				F1, "F1.txt",
+				dc01, "dc01.txt", 
+				Gamma, "Gamma.txt",
+				n_imp, "n_imp.txt"
+		);
 
 		dur = iclock::now() - start;
 		std::cout << "time elapsed = " << dur.count() << std::endl;
 	}
 
-	::MPI_Barrier(MPI_COMM_WORLD);
-	::MPI_Finalize();
+	MPI_Finalize();
 	
 	return 0;
 }

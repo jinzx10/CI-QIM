@@ -1,5 +1,5 @@
 #include <dc.h>
-#include <join.h>
+#include <arma_helper.h>
 
 using namespace arma;
 
@@ -15,10 +15,6 @@ void adj_phase(mat const& vecs_old, mat& vecs_new) {
 		}
 		*/
 	}
-}
-
-uvec range(uword const& i, uword const& j) {
-	return regspace<uvec>(i, 1, j); // end-inclusive
 }
 
 mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& vec_vir_, vec const& vec_do, mat const& vec_occ, vec const& vec_dv, mat const& vec_vir) {

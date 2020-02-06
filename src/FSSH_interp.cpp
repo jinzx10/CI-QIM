@@ -1,6 +1,5 @@
 #include <FSSH_interp.h>
-#include <min.h>
-#include <bcast_op.h>
+#include <arma_helper.h>
 
 using namespace arma;
 

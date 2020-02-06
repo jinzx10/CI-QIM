@@ -23,9 +23,13 @@ int main() {
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_FSSH_interp/Gamma/";
 	savedir += param + "/";
 	std::string command = "mkdir -p " + savedir;
+
+
+
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
 	////////////////////////////////////////////////////////////
+
 	std::string readdir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/";
 	readdir += param + "/";
 
@@ -61,9 +65,11 @@ int main() {
 
 	TwoPara_interp model(xgrid, E0, E1, F0, F1, arma::abs(dc01), Gamma);
 
+
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
+
 	double omega = 0.0002;
 	double mass = 2000;
 	double x0_mpt = 0;

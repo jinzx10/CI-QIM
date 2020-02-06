@@ -1,10 +1,8 @@
 #include <FSSH.h>
 #include <dc.h>
-#include <join.h>
 #include <complex>
 #include <chrono>
-#include <bcast_op.h>
-#include <min.h>
+#include <arma_helper.h>
 
 using namespace arma;
 

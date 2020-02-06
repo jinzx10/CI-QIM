@@ -23,13 +23,18 @@ arma::Mat<eT> bcast_op(arma::Row<eT> const& r, arma::Col<eT> const& v, Op op) {
 	return result;
 }
 
+
+// unit vector
+inline arma::vec unit_vec(arma::uword const& dim, arma::uword const& index) {
+	arma::vec v = arma::zeros(dim);
+	v(index) = 1.0;
+	return v;
+}
+
+
 // index range and concatenation
 inline arma::uvec range(arma::uword const& i, arma::uword const& j) {
 	return arma::regspace<arma::uvec>(i, 1, j); // end-inclusive
-}
-
-inline arma::uvec cat() {
-	return arma::uvec{}; 
 }
 
 template <typename T>
@@ -44,6 +49,7 @@ arma::uvec cat(T const& i, Ts const& ...args) {
 
 
 // mass size setting
+// size determined at compile time
 template <arma::uword N, typename eT>
 void set_size(arma::Mat<eT>& m) {
     m.set_size(N);
@@ -65,6 +71,19 @@ void set_size(arma::Mat<eT>& m, Ts& ...args) {
     m.set_size(M,N);
     set_size<M,N>(args...);
 }
+
+// size determined at run time
+template <typename eT>
+void set_size(arma::uword const& sz, arma::Mat<eT>& m) {
+	m.set_size(sz);
+}
+
+template <typename eT, typename ...Ts>
+void set_size(arma::uword const& sz, arma::Mat<eT>& m, Ts& ...args) {
+    m.set_size(sz);
+    set_size(sz, args...);
+}
+
 
 
 // matrix concatenation
@@ -106,11 +125,11 @@ T join_c(T const& m, Ts const& ...ms) {
     return join_cols( m, join_r(ms...) );
 }
 
-template <typename T>
-T join_d(T const& m1, T const& m2) {
+template <typename eT>
+arma::Mat<eT> join_d(arma::Mat<eT> const& m1, arma::Mat<eT> const& m2) {
     return join_cols(
-            join_rows( m1, arma::zeros<T>(m1.n_rows, m2.n_cols) ),
-            join_rows( arma::zeros<T>(m2.n_rows, m1.n_cols), m2 )
+            join_rows( m1, arma::zeros<arma::Mat<eT>>(m1.n_rows, m2.n_cols) ),
+            join_rows( arma::zeros<arma::Mat<eT>>(m2.n_rows, m1.n_cols), m2 )
 	);
 }
 
@@ -118,6 +137,33 @@ template <typename T, typename ...Ts>
 T join_d(T const& m, Ts const& ...ms) {
     return join_d(m, join_d(ms...));
 }
+
+
+// save/load
+template <arma::file_type F, typename T>
+void arma_save(std::string const& dir, T const& data, std::string const& name) {
+    data.save(dir+"/"+name, F); 
+}
+
+template <arma::file_type F, typename T, typename ...Ts>
+void arma_save(std::string const& dir, T const& data, std::string const& name, Ts const& ...args) {
+    data.save(dir+"/"+name, F); 
+    arma_save<F>(dir, args...);
+}
+
+template <typename T>
+void arma_load(std::string const& dir, T& data, std::string const& name) {
+    data.load(dir+"/"+name);
+}
+
+template <typename T, typename ...Ts>
+void arma_load(std::string const& dir, T& data, std::string const& name, Ts& ...args) {
+    data.load(dir+"/"+name);
+    arma_load(dir, args...);
+}
+
+
+
 
 
 #endif

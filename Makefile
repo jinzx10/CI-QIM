@@ -11,23 +11,26 @@ LDFLAGS 		= -larmadillo
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
-gauss_deps_h 	= bcast_op
-main_deps 		= fermi newtonroot findmu gauss 
-main_deps_h 	= join bcast_op
-findmu_deps 	= fermi newtonroot
-dc_deps 		= TwoPara gauss
-dc_deps_h 		= join bcast_op
-TwoPara_deps 	= gauss dc
-TwoPara_deps_h 	= join bcast_op arma_mpi_helper
-FSSH_deps 		= dc fermi TwoPara gauss
-FSSH_deps_h 	= join bcast_op
-TwoPara_interp_deps 	= interp
-TwoPara_interp_deps_h 	= join bcast_op arma_mpi_helper
-FSSH_interp_deps 		= TwoPara_interp interp
-FSSH_interp_deps_h 		= join bcast_op arma_mpi_helper
+dc_deps 				= 
+dc_deps_h 				= arma_helper
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, findmu fermi newtonroot gauss TwoPara dc FSSH interp TwoPara_interp FSSH_interp)
-exe_test_hdr 	= $(addprefix ${BDIR}/test_, join)
+TwoPara_deps 			= dc
+TwoPara_deps_h 			= auxmath arma_helper 
+
+TwoPara_interp_deps 	= interp
+TwoPara_interp_deps_h 	= arma_helper 
+
+FSSH_deps 				= dc TwoPara
+FSSH_deps_h 			= arma_helper
+
+FSSH_interp_deps 		= TwoPara_interp interp
+FSSH_interp_deps_h 		= arma_helper 
+
+main_deps 				= TwoPara_interp FSSH_interp
+main_deps_h 			= arma_mpi_helper arma_helper
+
+exe_test_src 	= $(addprefix ${BDIR}/test_, TwoPara dc FSSH interp TwoPara_interp FSSH_interp)
+exe_test_hdr 	= $(addprefix ${BDIR}/test_, )
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 
 obj_test_src 	= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${exe_test_src})
