@@ -131,7 +131,7 @@ double TwoPara::force(uword const& state_) {
 	if (state_ == 0)
 		return - dE_imp(x) * ev_n - dE_mpt(x);
 
-	double dx = 1e-6;
+	double dx = 1e-4;
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
 	model_.set_and_calc_cis_sub(x+dx);
 	return - ( model_.val_cis_sub(state_-1) - val_cis_sub(state_-1) ) / dx 
@@ -139,7 +139,7 @@ double TwoPara::force(uword const& state_) {
 }
 
 vec TwoPara::force() {
-	double dx = 1e-6;
+	double dx = 1e-4;
 	vec f = zeros(sz_rel);
 	f(0) = force(0);
 

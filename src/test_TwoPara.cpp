@@ -17,7 +17,7 @@ int main() {
 
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/00128_1000/";
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/0000025_1000/";
 	//std::string datadir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/";
 	std::string cmd;
 	const char* system_cmd = nullptr;
@@ -48,7 +48,7 @@ int main() {
 	uword n_vir = n_bath + 1 - n_occ;
 	uword sz_sub = n_occ + n_vir - 1;
 
-	double hybrid = 0.0128;
+	double hybrid = 0.000025;
 	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
 
 	uword nx = 32*3*10;

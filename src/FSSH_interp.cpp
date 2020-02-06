@@ -19,7 +19,7 @@ FSSH_interp::FSSH_interp(
 	E_adi(zeros(sz)), rho_eq(zeros(sz)),
 	counter(0), has_hop(false),
 	x_t(zeros(ntc)), v_t(zeros(ntc)), E_t(zeros(ntc)),
-	state_t(zeros<uvec>(ntc))
+	state_t(zeros<uvec>(ntc)), num_frustrated_hops(0)
 {}
 
 void FSSH_interp::initialize(bool const& state0, double const& x0, double const& v0, cx_mat const& rho0) {
@@ -151,6 +151,7 @@ void FSSH_interp::hop() {
 		state = target;
 		has_hop = 1;
 	} else { // frustrated hops
+		num_frustrated_hops += 1;
 		double F_tmp = model->force(target, x);
 		if ( F_pes*F_tmp < 0 && F_tmp*v < 0  ) // velocity reveral
 			v = -v;
@@ -170,6 +171,7 @@ void FSSH_interp::clear() {
 	v_t.zeros();
 	state_t.zeros();
 	E_t.zeros();
+	num_frustrated_hops = 0;
 }
 
 void FSSH_interp::propagate() {

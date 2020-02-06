@@ -19,7 +19,7 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string param = "00016_1000";
+	std::string param = "0000025_1000";
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_FSSH_interp/Gamma/";
 	savedir += param + "/";
 	std::string command = "mkdir -p " + savedir;
@@ -73,12 +73,12 @@ int main() {
 	uword ntc = 20;
 	double fric_gamma = 0;
 #else
-	int n_trajs = 480;
-	uword ntc = 1500;
+	int n_trajs = 960;
+	uword ntc = 100000;
 	double fric_gamma = 2.0 * mass * omega;
 #endif
 
-	double dtc = 500;
+	double dtc = 20;
 	double kT = 9.5e-4;
 	int n_trajs_local = n_trajs / nprocs;
 
