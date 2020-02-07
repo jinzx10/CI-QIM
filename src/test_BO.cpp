@@ -1,7 +1,7 @@
 #include <mpi.h>
 #include <chrono>
 #include <cstdlib>
-#include "FSSH_interp.h"
+#include "BO.h"
 #include "TwoPara_interp.h"
 #include "arma_mpi_helper.h"
 #include "arma_helper.h"
@@ -23,7 +23,7 @@ int main() {
 	std::string param = "0000025";
 
 	std::string readdir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/";
-	std::string savedir = "/home/zuxin/job/CI-QIM/data/main/Gamma/";
+	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_BO/Gamma/";
 
 	readdir += param + "/";
 	savedir += param + "/";
@@ -65,15 +65,15 @@ int main() {
 
 
 	////////////////////////////////////////////////////////////
-	//			Fewest-Switches Surface Hopping
+	//			Born-Oppenheimer Molecular Dynamics
 	////////////////////////////////////////////////////////////
 
 	double omega = 0.0002;
 	double mass = 2000;
 	double x0_mpt = 0;
 
-	double t_max = 5e6;
-	double dtc = 5;
+	double t_max = 50e5;
+	double dtc = 10;
 	int n_trajs = 960;
 	uword ntc = t_max / dtc;
 	vec time_grid;
@@ -88,24 +88,18 @@ int main() {
 
 	int n_trajs_local = n_trajs / nprocs;
 	arma::uword sz_rho = 2;
-	FSSH_interp fssh_interp(&model, mass, dtc, ntc, kT, fric_gamma);
+	BO bo(&model, mass, dtc, ntc, kT, fric_gamma);
 
 	// local data
 	mat x_local, v_local, E_local;
-	umat state_local;
-	uvec n_fhop_local;
 
-	set_size(ntc, n_trajs_local, x_local, v_local, state_local, E_local);
-	set_size(n_trajs_local, n_fhop_local);
+	set_size(ntc, n_trajs_local, x_local, v_local, E_local);
 
 	// global data
 	mat x_t, v_t, E_t;
-	umat state_t;
-	uvec n_fhop;
 
 	if (id == 0) {
-		set_size(ntc, n_trajs, x_t, v_t, state_t, E_t);
-		set_size(n_trajs, n_fhop);
+		set_size(ntc, n_trajs, x_t, v_t, E_t);
 		start = iclock::now();
 	}
 
@@ -131,18 +125,15 @@ int main() {
 		rho0(1,1) = rho_eq(1);
 		uword state0 = (arma::randu() < rho_eq(0)) ? 0 : 1;
 
-		fssh_interp.initialize(state0, x0, v0, rho0);
-		fssh_interp.propagate();
+		bo.initialize(x0, v0);
+		bo.propagate();
 
-		x_local.col(i) = fssh_interp.x_t;
-		v_local.col(i) = fssh_interp.v_t;
-		state_local.col(i) = fssh_interp.state_t;
-		E_local.col(i) = fssh_interp.E_t;
-		n_fhop_local(i) = fssh_interp.num_frustrated_hops;
+		x_local.col(i) = bo.x_t;
+		v_local.col(i) = bo.v_t;
+		E_local.col(i) = bo.E_t;
 	}
 
-	gather( state_local, state_t, x_local, x_t, v_local, v_t,
-			E_local, E_t, n_fhop_local, n_fhop );
+	gather( x_local, x_t, v_local, v_t, E_local, E_t );
 
 	////////////////////////////////////////////////////////////
 	//					save data
@@ -156,11 +147,9 @@ int main() {
 		}
 
 		arma_save<raw_binary>( savedir, 
-				state_t, "state.dat", 
 				x_t, "x.dat",
 				v_t, "v.dat",
 				E_t, "E.dat",
-				n_fhop, "fhop.dat",
 				time_grid, "t.dat"
 		);
 
@@ -172,3 +161,4 @@ int main() {
 
 	return 0;
 }
+

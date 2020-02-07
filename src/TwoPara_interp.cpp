@@ -16,27 +16,27 @@ TwoPara_interp::TwoPara_interp(
 {}
 
 double TwoPara_interp::E0(double const& x) {
-	return lininterp_linspace(x, xgrid_, E0_);
+	return lininterp(x, xgrid_, E0_);
 }
 
 double TwoPara_interp::E1(double const& x) {
-	return lininterp_linspace(x, xgrid_, E1_);
+	return lininterp(x, xgrid_, E1_);
 }
 
 double TwoPara_interp::F0(double const& x) {
-	return lininterp_linspace(x, xgrid_, F0_);
+	return lininterp(x, xgrid_, F0_);
 }
 
 double TwoPara_interp::F1(double const& x) {
-	return lininterp_linspace(x, xgrid_, F1_);
+	return lininterp(x, xgrid_, F1_);
 }
 
 double TwoPara_interp::Gamma(double const& x) {
-	return lininterp_linspace(x, xgrid_, Gamma_);
+	return lininterp(x, xgrid_, Gamma_);
 }
 
 double TwoPara_interp::dc01(double const& x) {
-	return lininterp_linspace(x, xgrid_, dc01_);
+	return lininterp(x, xgrid_, dc01_);
 }
 
 double TwoPara_interp::E_adi(uword const& state, double const& x) {

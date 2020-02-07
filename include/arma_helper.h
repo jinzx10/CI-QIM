@@ -84,6 +84,17 @@ void set_size(arma::uword const& sz, arma::Mat<eT>& m, Ts& ...args) {
     set_size(sz, args...);
 }
 
+template <typename eT>
+void set_size(arma::uword const& sz_r, arma::uword const& sz_c, arma::Mat<eT>& m) {
+	m.set_size(sz_r, sz_c);
+}
+
+template <typename eT, typename ...Ts>
+void set_size(arma::uword const& sz_r, arma::uword const& sz_c, arma::Mat<eT>& m, Ts& ...args) {
+    m.set_size(sz_r, sz_c);
+    set_size(sz_r, sz_c, args...);
+}
+
 
 
 // matrix concatenation
