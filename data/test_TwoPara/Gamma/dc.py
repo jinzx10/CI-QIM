@@ -9,8 +9,8 @@ for dir_ in dirs:
     dc = np.loadtxt(dir_+'/dc.txt')
     plt.plot(xgrid, np.abs(dc[1,:]))
 
-xgrid = np.loadtxt('0000025_1000/xgrid.txt')
-dc = np.loadtxt('0000025_1000/dc01.txt')
+xgrid = np.loadtxt('00008/xgrid.txt')
+dc = np.loadtxt('00008/dc01.txt')
 plt.plot(xgrid, np.abs(dc))
 
 plt.show()
