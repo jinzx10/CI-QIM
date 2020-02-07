@@ -26,7 +26,7 @@ FSSH_deps_h 			= arma_helper
 FSSH_interp_deps 		= TwoPara_interp interp
 FSSH_interp_deps_h 		= arma_helper 
 
-main_deps 				= TwoPara_interp FSSH_interp
+main_deps 				= TwoPara_interp FSSH_interp interp dc
 main_deps_h 			= arma_mpi_helper arma_helper
 
 exe_test_src 	= $(addprefix ${BDIR}/test_, TwoPara dc FSSH interp TwoPara_interp FSSH_interp)

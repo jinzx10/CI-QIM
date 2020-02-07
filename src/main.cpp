@@ -1,9 +1,10 @@
 #include <mpi.h>
-#include <FSSH_interp.h>
-#include <TwoPara_interp.h>
-#include <arma_mpi_helper.h>
 #include <chrono>
 #include <cstdlib>
+#include "FSSH_interp.h"
+#include "TwoPara_interp.h"
+#include "arma_mpi_helper.h"
+#include "arma_helper.h"
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;
@@ -19,11 +20,10 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string param = "00016_1000";
+	std::string param = "0000025";
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_FSSH_interp/Gamma/";
 	savedir += param + "/";
 	std::string command = "mkdir -p " + savedir;
-
 
 
 	////////////////////////////////////////////////////////////
@@ -38,13 +38,15 @@ int main() {
 	if (id == 0) {
 		start = iclock::now();
 
-		xgrid.load(readdir + "xgrid.txt");
-		E0.load(readdir + "E0.txt");
-		E1.load(readdir + "E1.txt");
-		F0.load(readdir + "F0.txt");
-		F1.load(readdir + "F1.txt");
-		dc01.load(readdir + "dc01.txt");
-		Gamma.load(readdir + "Gamma.txt");
+		arma_load(readdir, 
+				xgrid, "xgrid.txt",
+				E0, "E0.txt", 
+				E1, "E1.txt",
+				F0, "F0.txt", 
+				F1, "F1.txt",
+				dc01, "dc01.txt", 
+				Gamma, "Gamma.txt"
+		);
 
 		sz = xgrid.n_elem;
 	}
@@ -52,13 +54,7 @@ int main() {
 	bcast(&sz);
 
 	if (id != 0) {
-		xgrid.zeros(sz);
-		E0.zeros(sz);
-		E1.zeros(sz);
-		F0.zeros(sz);
-		F1.zeros(sz);
-		dc01.zeros(sz);
-		Gamma.zeros(sz);
+		set_size(sz, xgrid, E0, E1, F0, F1, dc01, Gamma);
 	}
 
 	bcast(xgrid, E0, E1, F0, F1, dc01, Gamma);
@@ -74,7 +70,7 @@ int main() {
 	double mass = 2000;
 	double x0_mpt = 0;
 
-	double t_max = 1e6;
+	double t_max = 2e6;
 	double dtc = 10;
 	int n_trajs = 960;
 	uword ntc = t_max / dtc;
@@ -97,14 +93,14 @@ int main() {
 	mat v_local = arma::zeros(ntc, n_trajs_local);
 	umat state_local = arma::zeros<umat>(ntc, n_trajs_local);
 	mat E_local = arma::zeros(ntc, n_trajs_local);
-	vec n_fhop_local = zeros(n_trajs_local);
+	uvec n_fhop_local = zeros<uvec>(n_trajs_local);
 
 	// global data
 	mat x_t;
 	mat v_t;
 	umat state_t;
 	mat E_t;
-	vec n_fhop;
+	uvec n_fhop;
 
 	if (id == 0) {
 		x_t.zeros(ntc, n_trajs);
@@ -161,11 +157,13 @@ int main() {
 			status = std::system(command.c_str());
 		}
 
-		state_t.save(savedir + "state.txt", raw_ascii);
-		x_t.save(savedir + "x.txt", raw_ascii);
-		v_t.save(savedir + "v.txt", raw_ascii);
-		E_t.save(savedir + "E.txt", raw_ascii);
-		n_fhop.save(savedir + "fhop.txt", raw_ascii);
+		arma_save<raw_ascii>( savedir, 
+				state_t, "state_t.txt", 
+				x_t, "x.txt",
+				v_t, "v.txt",
+				E_t, "E.txt",
+				n_fhop, "fhop.txt"
+		);
 
 		dur = iclock::now() - start;
 		std::cout << dur.count() << std::endl;

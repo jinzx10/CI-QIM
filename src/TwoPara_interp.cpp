@@ -1,5 +1,5 @@
-#include <TwoPara_interp.h>
-#include <interp.h>
+#include "TwoPara_interp.h"
+#include "interp.h"
 
 using namespace arma;
 

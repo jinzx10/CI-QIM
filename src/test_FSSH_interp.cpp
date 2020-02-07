@@ -1,9 +1,9 @@
 #include <mpi.h>
-#include <FSSH_interp.h>
-#include <TwoPara_interp.h>
-#include <arma_mpi_helper.h>
 #include <chrono>
 #include <cstdlib>
+#include "FSSH_interp.h"
+#include "TwoPara_interp.h"
+#include "arma_mpi_helper.h"
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;
@@ -19,7 +19,7 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string param = "0000025_1000";
+	std::string param = "0000025";
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_FSSH_interp/Gamma/";
 	savedir += param + "/";
 	std::string command = "mkdir -p " + savedir;
