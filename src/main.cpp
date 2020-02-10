@@ -20,13 +20,19 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string param = "0000025";
+	std::string param = "000005";
 
 	std::string readdir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/";
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/main/Gamma/";
 
 	readdir += param + "/";
+
+#ifdef NO_VELOCITY_REVERSAL
+	savedir += param + "_norev/";
+#else
 	savedir += param + "/";
+#endif
+
 
 	std::string command = "mkdir -p " + savedir;
 
@@ -72,7 +78,7 @@ int main() {
 	double mass = 2000;
 	double x0_mpt = 0;
 
-	double t_max = 5e6;
+	double t_max = 3e6;
 	double dtc = 5;
 	int n_trajs = 960;
 	uword ntc = t_max / dtc;

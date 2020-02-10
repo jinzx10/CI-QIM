@@ -1,10 +1,10 @@
-#include <TwoPara.h>
 #include <chrono>
 #include <mpi.h>
 #include <cstdlib>
-#include <arma_mpi_helper.h>
-#include <arma_helper.h>
-#include <auxmath.h>
+#include "TwoPara.h"
+#include "arma_mpi_helper.h"
+#include "arma_helper.h"
+#include "auxmath.h"
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;
