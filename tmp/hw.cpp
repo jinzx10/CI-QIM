@@ -45,7 +45,7 @@ using void_t = void;
 template <typename T1, typename T2, typename Op>
 struct op_is_defined<T1, T2, Op, void_t<decltype( std::declval<Op>()( std::declval<T1>(), std::declval<T2>() ) )>> : std::true_type 
 {
-	//using type = decltype( std::declval<Op>()( std::declval<T1>(), std::declval<T2>() ) );
+	using type = decltype( std::declval<Op>()( std::declval<T1>(), std::declval<T2>() ) );
 };
 
 
@@ -67,14 +67,14 @@ typename std::enable_if< R::is_row && C::is_col, arma::Mat< typename return_t<ty
 	return result;
 }
 
-//template <typename C, typename R, typename Op>
-//typename std::enable_if< C::is_col && R::is_row, std::enable_if<!op_is_defined<C, typename R::elem_type, Op>::value, arma::Mat< typename return_t<typename C::elem_type, R, Op>::elem_type > > >::type bcast_test(C const& col, R const& row, Op op) {
-//	arma::Mat< typename return_t<typename C::elem_type, R, Op>::elem_type > result( arma::size(col).n_rows, arma::size(row).n_cols);
-//	for (arma::uword i = 0; i != arma::size(col).n_rows; ++i) {
-//		result.row(i) = op(arma::conv_to<arma::Col<typename C::elem_type>>::from(col)(i), row);
-//	}
-//	return result;
-//}
+template <typename C, typename R, typename Op>
+typename std::enable_if< C::is_col && R::is_row && !op_is_defined<C, typename R::elem_type, Op>::value, arma::Mat< typename return_t<typename C::elem_type, R, Op>::elem_type > >::type bcast_test(C const& col, R const& row, Op op) {
+	arma::Mat< typename return_t<typename C::elem_type, R, Op>::elem_type > result( arma::size(col).n_rows, arma::size(row).n_cols);
+	for (arma::uword i = 0; i != arma::size(col).n_rows; ++i) {
+		result.row(i) = op(arma::conv_to<arma::Col<typename C::elem_type>>::from(col)(i), row);
+	}
+	return result;
+}
 
 
 int main() {
@@ -84,7 +84,9 @@ int main() {
 	rowvec xr = x.t();
 	rowvec yr = y.t();
 
-	std::cout << op_is_defined<decltype(x), typename decltype(y)::elem_type, std::plus<>()>::value << std::endl;
+	std::cout << op_is_defined<decltype(x), typename decltype(y)::elem_type, std::plus<>>::value << std::endl;
+
+	mat z1 = bcast_test(x, y.t(), std::plus<>());
 
 
 	

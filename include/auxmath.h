@@ -22,7 +22,7 @@ inline arma::vec fermi(arma::vec const& E, double const& mu, double const& kT) {
 inline arma::vec boltzmann(arma::vec const& E, double const& kT) {
 	arma::uword imin = E.index_min();
 	return ( std::abs(kT) < arma::datum::eps ) ?
-		unit_vec(E.n_elem, imin) : arma::exp( -(E-E(imin)) / kT ) / arma::accu(arma::exp(-(E-E(imin))/kT));
+		unit_vec(E.n_elem, imin) : arma::exp(-(E-E(imin))/kT) / arma::accu( arma::exp(-(E-E(imin))/kT) );
 }
 
 
@@ -60,7 +60,7 @@ inline std::function<double(double)> grad(std::function<double(double)> const& f
 }
 
 template <typename V>
-std::function<double(V)> gradi(std::function<double(V)> const& f, size_t const& i, double const& delta) {
+std::function<double(V)> gradi(std::function<double(V)> const& f, size_t const& i, double const& delta = 0.001) {
 	return [=] (V const& v) -> double {
 		std::function<double(double)> g = [=, v=v] (double const& x) mutable {
 			v[i] = x;
@@ -71,7 +71,7 @@ std::function<double(V)> gradi(std::function<double(V)> const& f, size_t const& 
 }
 
 template <typename V>
-std::function<V(V)> grad(std::function<double(V)> const& f, double const& delta) {
+std::function<V(V)> grad(std::function<double(V)> const& f, double const& delta = 0.001) {
 	return [=] (V const& x) -> V {
 		V df = x;
 		for (size_t i = 0; i != x.size(); ++i) {
