@@ -49,30 +49,6 @@ arma::uvec cat(T const& i, Ts const& ...args) {
 
 
 // mass size setting
-// size determined at compile time
-template <arma::uword N, typename eT>
-void set_size(arma::Mat<eT>& m) {
-    m.set_size(N);
-}
-
-template <arma::uword N, typename eT, typename ...Ts>
-void set_size(arma::Mat<eT>& m, Ts& ...args) {
-    m.set_size(N);
-    set_size<N>(args...);
-}
-
-template <arma::uword M, arma::uword N, typename eT>
-void set_size(arma::Mat<eT>& m) {
-    m.set_size(M, N);
-}
-
-template <arma::uword M, arma::uword N, typename eT, typename ...Ts>
-void set_size(arma::Mat<eT>& m, Ts& ...args) {
-    m.set_size(M,N);
-    set_size<M,N>(args...);
-}
-
-// size determined at run time
 template <typename eT>
 void set_size(arma::uword const& sz, arma::Mat<eT>& m) {
 	m.set_size(sz);

@@ -88,6 +88,10 @@ int main() {
 
 	mat z1 = bcast_test(x, y.t(), std::plus<>());
 
+	std::cout << x.is_vec()<< std::endl;
+	std::cout << x.t().is_vec()<< std::endl;
+	std::cout << xr.is_vec()<< std::endl;
+	std::cout << xr.t().is_vec()<< std::endl;
 
 	
 	return 0;
