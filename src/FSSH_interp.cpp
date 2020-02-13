@@ -152,9 +152,11 @@ void FSSH_interp::hop() {
 		has_hop = 1;
 	} else { // frustrated hops
 		num_frustrated_hops += 1;
+#ifndef NO_VELOCITY_REVERSAL
 		double F_tmp = model->force(target, x);
 		if ( F_pes*F_tmp < 0 && F_tmp*v < 0  ) // velocity reveral
 			v = -v;
+#endif
 	}
 }
 

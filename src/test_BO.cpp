@@ -118,13 +118,6 @@ int main() {
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 
-		vec val = model.E_adi(x0);
-		vec rho_eq = exp(-(val-val(0))/kT) / accu( exp(-(val-val(0))/kT) );
-		cx_mat rho0 = zeros<cx_mat>(sz_rho, sz_rho);
-		rho0(0,0) = rho_eq(0);
-		rho0(1,1) = rho_eq(1);
-		uword state0 = (arma::randu() < rho_eq(0)) ? 0 : 1;
-
 		bo.initialize(x0, v0);
 		bo.propagate();
 
