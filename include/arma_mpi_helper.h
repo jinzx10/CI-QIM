@@ -6,6 +6,7 @@
 
 template <typename eT>
 inline MPI_Datatype mpi_type_helper() {
+	std::cerr << "fails to convert to MPI datatype" << std::endl;
 	return nullptr;
 }
 

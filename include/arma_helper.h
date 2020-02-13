@@ -175,6 +175,4 @@ void arma_load(std::string const& dir, T& data, std::string const& name, Ts& ...
 
 
 
-
-
 #endif

@@ -23,6 +23,7 @@ int newtonroot(std::function<vec(vec)> f, vec& x, double const& dx, double const
 	unsigned int counter = 0;
 	vec fx = f(x);
 	uword len_x = x.n_elem;
+	vec dxi = zeros(len_x);
 	mat J = zeros(fx.n_elem, len_x);
 
 	while (counter < max_step) {
@@ -30,7 +31,7 @@ int newtonroot(std::function<vec(vec)> f, vec& x, double const& dx, double const
 		if ( norm(fx) < tol )
 			break;
 		for (uword i = 0; i != len_x; ++i) {
-			vec dxi = zeros(len_x);
+			dxi.zeros();
 			dxi(i) = dx;
 			J.col(i) = ( f(x+dxi) - fx ) / dx;
 		}
