@@ -3,22 +3,32 @@
 
 #include <armadillo>
 #include <initializer_list>
+#include "template_helper.h"
 
 // broadcasted operations between column and row vectors
-template <typename eT, typename Op>
-arma::Mat<eT> bcast_op(arma::Col<eT> const& v, arma::Row<eT> const& r, Op op) {
-	arma::Mat<eT> result(v.n_rows, r.n_cols);
-	for (arma::uword j = 0; j != r.n_cols; ++j) {
-		result.col(j) = op(v, r(j));
+template <typename C, typename R, typename Op>
+typename std::enable_if< C::is_col && R::is_row && is_valid_call<Op, C, typename R::elem_type>::value, arma::Mat< typename is_valid_call<Op, C, typename R::elem_type>::return_type::elem_type > >::type bcast_op(C const& col, R const& row, Op op) {
+	arma::Mat< typename is_valid_call<Op, C, typename R::elem_type>::return_type::elem_type > result( arma::size(col).n_rows, arma::size(row).n_cols);
+	for (arma::uword j = 0; j != arma::size(row).n_cols; ++j) {
+		result.col(j) = op(col, arma::conv_to<arma::Row<typename R::elem_type>>::from(row)(j));
 	}
 	return result;
 }
 
-template <typename eT, typename Op>
-arma::Mat<eT> bcast_op(arma::Row<eT> const& r, arma::Col<eT> const& v, Op op) {
-	arma::Mat<eT> result(v.n_rows, r.n_cols);
-	for (arma::uword j = 0; j != r.n_cols; ++j) {
-		result.col(j) = op(r(j), v);
+template <typename R, typename C, typename Op>
+typename std::enable_if< R::is_row && C::is_col && is_valid_call<Op, typename R::elem_type, C>::value, arma::Mat< typename is_valid_call<Op, typename R::elem_type, C>::return_type::elem_type > >::type bcast_op(R const& row, C const& col, Op op) {
+	arma::Mat< typename is_valid_call<Op, typename R::elem_type, C>::return_type::elem_type > result(arma::size(col).n_rows, arma::size(row).n_cols);
+	for (arma::uword j = 0; j != arma::size(row).n_cols; ++j) {
+		result.col(j) = op(arma::conv_to<arma::Row<typename R::elem_type>>::from(row)(j), col);
+	}
+	return result;
+}
+
+template <typename R, typename C, typename Op>
+typename std::enable_if< R::is_row && C::is_col && !is_valid_call<Op, typename R::elem, C, Op>::value && is_valid_call<Op, R, typename C::elem_type>::value, arma::Mat< typename is_valid_call<Op, R, typename C::elem_type>::return_type::elem_type > >::type bcast_op(R const& row, C const& col, Op op) {
+	arma::Mat< typename is_valid_call<Op, R, typename C::elem_type>::return_type::elem_type > result(arma::size(col).n_rows, arma::size(row).n_cols);
+	for (arma::uword i = 0; i != arma::size(col).n_rows; ++i) {
+		result.row(i) = op(row, arma::conv_to<arma::Col<typename C::elem_type>>::from(col)(i));
 	}
 	return result;
 }
@@ -115,8 +125,8 @@ T join_c(T const& m, Ts const& ...ms) {
 template <typename eT>
 arma::Mat<eT> join_d(arma::Mat<eT> const& m1, arma::Mat<eT> const& m2) {
     return join_cols(
-            join_rows( m1, arma::zeros<arma::Mat<eT>>(m1.n_rows, m2.n_cols) ),
-            join_rows( arma::zeros<arma::Mat<eT>>(m2.n_rows, m1.n_cols), m2 )
+			join_rows( m1, arma::zeros<arma::Mat<eT>>(m1.n_rows, m2.n_cols) ),
+			join_rows( arma::zeros<arma::Mat<eT>>(m2.n_rows, m1.n_cols), m2 )
 	);
 }
 

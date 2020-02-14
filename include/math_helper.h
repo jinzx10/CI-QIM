@@ -1,10 +1,9 @@
-#ifndef __AUXILIARY_MATH_H__
-#define __AUXILIARY_MATH_H__
+#ifndef __MATH_HELPER_H__
+#define __MATH_HELPER_H__
 
 #include <armadillo>
 #include <arma_helper.h>
 #include <functional>
-
 
 // Fermi function
 inline double fermi(double const& E, double const& mu, double const& kT) {
@@ -17,14 +16,12 @@ inline arma::vec fermi(arma::vec const& E, double const& mu, double const& kT) {
 		arma::conv_to<arma::vec>::from(E < mu) : 1.0 / ( exp( (E - mu) / kT ) + 1.0 );
 }
 
-
 // Boltzmann weight
 inline arma::vec boltzmann(arma::vec const& E, double const& kT) {
 	arma::uword imin = E.index_min();
 	return ( std::abs(kT) < arma::datum::eps ) ?
 		unit_vec(E.n_elem, imin) : arma::exp(-(E-E(imin))/kT) / arma::accu( arma::exp(-(E-E(imin))/kT) );
 }
-
 
 // Gaussian
 inline double gauss(double const& x, double const& mu, double const& sigma) {
@@ -92,6 +89,89 @@ inline arma::vec grid(double const& xmin, double const& xmax, std::function<doub
 		g_last = g.back();
 	}
 	return g;
+}
+
+
+// Newton-Raphson root-finding algorithm
+// Broyden method TBD...
+inline int newtonroot(std::function<double(double)> f, double& x, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50) {
+	unsigned int counter = 0;
+	double fx = 0;
+	double J = 0;
+
+	while (counter < max_step) {
+		fx = f(x);
+		if ( std::abs(fx) < tol )
+			break;
+		J = ( f(x+dx) - fx ) / dx;
+		x -= fx / J;
+		counter += 1;
+	}
+
+	return ( counter >= max_step ) ? -1 : 0;
+}
+
+inline int newtonroot(std::function<arma::vec(arma::vec)> f, arma::vec& x, double const& dx = 1e-6, double const& tol = 1e-12, unsigned int const& max_step = 50) {
+	unsigned int counter = 0;
+	arma::vec fx = f(x);
+	arma::uword len_x = x.n_elem;
+	arma::vec dxi = arma::zeros(len_x);
+	arma::mat J = arma::zeros(fx.n_elem, len_x);
+
+	while (counter < max_step) {
+		fx = f(x);
+		if ( norm(fx) < tol )
+			break;
+		for (arma::uword i = 0; i != len_x; ++i) {
+			dxi.zeros();
+			dxi(i) = dx;
+			J.col(i) = ( f(x+dxi) - fx ) / dx;
+		}
+		x -= solve(J, fx);
+		counter += 1;
+	}
+
+	return ( counter >= max_step ) ? -1 : 0;
+}
+
+// solve for the chemical potential given the particle number and temperature
+inline double findmu(arma::vec const& E, arma::uword const& n, double const& kT = 0.0) {
+	arma::vec val = sort(E);
+	if ( std::abs(kT) < arma::datum::eps )
+		return val(n-1);
+
+	auto dn = [&] (double const& mu) { return accu(fermi(val, mu, kT)) - n; };
+	double mu = val(n-1);
+	newtonroot(dn, mu);
+	return mu;
+}
+
+
+// linear interpolation (with extrapolation outside the range)
+inline double lininterp(double const& x0, arma::vec const& x, arma::vec const& y, bool is_evenly_spaced = false) {
+	// x should be sorted in ascending order
+	if (is_evenly_spaced) {
+		double dx = x(1) - x(0);
+		arma::uword i = 0;
+	
+		// find i such that y0 is interpolated/extrapolated from x(i) and x(i+1)
+		if ( x0 > x(0) && x0 < x(x.n_elem-1) ) { // if x0 is within the range of x
+			i = (x0 - x(0)) / dx; 
+		} else {
+			if ( x0 >= x(x.n_elem-1) )
+				i = x.n_elem-2;
+		}
+		double k = ( y(i+1) - y(i) ) / dx;
+		return y(i) + k * (x0 - x(i));
+	} else {
+		// not necesarily evenly-spaced, but must not have repeated elements
+		arma::uword i;
+		for (i = 1; i != x.n_elem-1; ++i)
+			if ( x(i) > x0 ) break;
+
+		double k = ( y(i) - y(i-1) ) / ( x(i) - x(i-1) );
+		return y(i-1) + k * (x0 - x(i-1));
+	}
 }
 
 

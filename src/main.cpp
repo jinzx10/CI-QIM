@@ -20,7 +20,7 @@ int main() {
 	iclock::time_point start;
 	std::chrono::duration<double> dur;
 
-	std::string param = "000005";
+	std::string param = "00128";
 
 	std::string readdir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/";
 	std::string savedir = "/home/zuxin/job/CI-QIM/data/main/Gamma/";
@@ -78,8 +78,8 @@ int main() {
 	double mass = 2000;
 	double x0_mpt = 0;
 
-	double t_max = 3e6;
-	double dtc = 5;
+	double t_max = 1e5;
+	double dtc = 10;
 	int n_trajs = 960;
 	uword ntc = t_max / dtc;
 	vec time_grid;
