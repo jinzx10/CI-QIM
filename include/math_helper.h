@@ -149,29 +149,24 @@ inline double findmu(arma::vec const& E, arma::uword const& n, double const& kT 
 
 // linear interpolation (with extrapolation outside the range)
 inline double lininterp(double const& x0, arma::vec const& x, arma::vec const& y, bool is_evenly_spaced = false) {
-	// x should be sorted in ascending order
-	if (is_evenly_spaced) {
-		double dx = x(1) - x(0);
-		arma::uword i = 0;
-	
-		// find i such that y0 is interpolated/extrapolated from x(i) and x(i+1)
-		if ( x0 > x(0) && x0 < x(x.n_elem-1) ) { // if x0 is within the range of x
-			i = (x0 - x(0)) / dx; 
+	arma::uword i = 1;
+
+	// x must be sorted in ascending order
+	if ( is_evenly_spaced ) {
+		if ( x0 > x(0) && x0 < x(x.n_elem-1) ) {
+			i = (x0 - x(0)) / (x(1) - x(0)) + 1; 
 		} else {
 			if ( x0 >= x(x.n_elem-1) )
-				i = x.n_elem-2;
+				i = x.n_elem - 1;
 		}
-		double k = ( y(i+1) - y(i) ) / dx;
-		return y(i) + k * (x0 - x(i));
 	} else {
-		// not necesarily evenly-spaced, but must not have repeated elements
-		arma::uword i;
+		// must not have repeated elements
 		for (i = 1; i != x.n_elem-1; ++i)
 			if ( x(i) > x0 ) break;
 
-		double k = ( y(i) - y(i-1) ) / ( x(i) - x(i-1) );
-		return y(i-1) + k * (x0 - x(i-1));
 	}
+	double k = ( y(i) - y(i-1) ) / ( x(i) - x(i-1) );
+	return y(i-1) + k * (x0 - x(i-1));
 }
 
 

@@ -3,7 +3,7 @@
 #include <functional>
 #include <armadillo>
 #include "arma_mpi_helper.h"
-#include "auxmath.h"
+#include "math_helper.h"
 
 using namespace arma;
 using iclock = std::chrono::high_resolution_clock;

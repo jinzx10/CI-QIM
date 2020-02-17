@@ -15,24 +15,24 @@ dc_deps 				=
 dc_deps_h 				= arma_helper
 
 TwoPara_deps 			= dc
-TwoPara_deps_h 			= auxmath arma_helper 
+TwoPara_deps_h 			= arma_helper math_helper
 
-TwoPara_interp_deps 	= interp
-TwoPara_interp_deps_h 	= arma_helper 
+TwoPara_interp_deps 	= 
+TwoPara_interp_deps_h 	= arma_helper math_helper
 
 FSSH_deps 				= dc TwoPara
 FSSH_deps_h 			= arma_helper
 
-FSSH_interp_deps 		= TwoPara_interp interp
-FSSH_interp_deps_h 		= arma_helper 
+FSSH_interp_deps 		= TwoPara_interp 
+FSSH_interp_deps_h 		= arma_helper math_helper
 
-BO_deps 				= TwoPara_interp interp
-BO_deps_h 				= arma_helper auxmath
+BO_deps 				= TwoPara_interp 
+BO_deps_h 				= arma_helper math_helper
 
-main_deps 				= TwoPara_interp FSSH_interp interp dc
-main_deps_h 			= arma_mpi_helper arma_helper
+main_deps 				= TwoPara_interp FSSH_interp dc
+main_deps_h 			= arma_helper math_helper arma_mpi_helper 
 
-exe_test_src 	= $(addprefix ${BDIR}/test_, TwoPara dc FSSH interp TwoPara_interp FSSH_interp BO)
+exe_test_src 	= $(addprefix ${BDIR}/test_, TwoPara dc FSSH TwoPara_interp FSSH_interp BO)
 exe_test_hdr 	= $(addprefix ${BDIR}/test_, )
 exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
 
