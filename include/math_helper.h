@@ -147,7 +147,7 @@ inline double findmu(arma::vec const& E, arma::uword const& n, double const& kT 
 }
 
 
-// linear interpolation (with extrapolation outside the range)
+// linear interpolation (or extrapolation, if outside the range)
 inline double lininterp(double const& x0, arma::vec const& x, arma::vec const& y, bool is_evenly_spaced = false) {
 	arma::uword i = 1;
 
