@@ -30,7 +30,8 @@ inline double gauss(double const& x, double const& mu, double const& sigma) {
 }
 
 inline arma::mat gauss(arma::vec const& x, arma::rowvec const& y, double const& sigma) {
-	return exp( -0.5*arma::square( bcast_op(x, y, std::minus<>()) / sigma ) ) 
+	auto minus = [] (arma::vec const& col, double const& n) -> arma::vec { return col-n; };
+	return exp( -0.5*arma::square( bcast_op(x, y, minus) / sigma ) ) 
 		/ ( sigma * sqrt(2.0 * arma::datum::pi) );
 }
 

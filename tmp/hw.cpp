@@ -1,71 +1,44 @@
 #include <iostream>
-#include <armadillo>
+//#include <armadillo>
 #include <type_traits>
 #include "template_helper.h"
-#include "arma_helper.h"
-#include "newtonroot.h"
+//#include "arma_helper.h"
+//#include "math_helper.h"
 
-using namespace arma;
+//using namespace arma;
 
-int newtonroot(std::function<double(double)> f, double& x, double const& dx, double const& tol, unsigned int const& max_step) {
-	unsigned int counter = 0;
-	double fx = 0;
-	double J = 0;
+template <typename F1, typename ...Args1>
+using return_t = decltype( std::declval<F1>()( std::declval<Args1>()... ) );
 
-	while (counter < max_step) {
-		fx = f(x);
-		if ( std::abs(fx) < tol )
-			break;
-		J = ( f(x+dx) - fx ) / dx;
-		x -= fx / J;
-		counter += 1;
-	}
+typedef char yes;
+typedef char no[2];
 
-	return ( counter >= max_step ) ? -1 : 0;
-}
+template <typename F1, typename ...Args1>
+static yes& test(decltype( std::declval<F1>()( std::declval<Args1>()... ) )*);
+//static yes& test(return_t<F1, Args1...>*);
 
-int newtonroot(std::function<vec(vec)> f, vec& x, double const& dx, double const& tol, unsigned int const& max_step) {
-	unsigned int counter = 0;
-	vec fx = f(x);
-	uword len_x = x.n_elem;
-	vec dxi = zeros(len_x);
-	mat J = zeros(fx.n_elem, len_x);
-
-	while (counter < max_step) {
-		fx = f(x);
-		if ( norm(fx) < tol )
-			break;
-		for (uword i = 0; i != len_x; ++i) {
-			dxi.zeros();
-			dxi(i) = dx;
-			J.col(i) = ( f(x+dxi) - fx ) / dx;
-		}
-		x -= solve(J, fx);
-		counter += 1;
-	}
-
-	return ( counter >= max_step ) ? -1 : 0;
-}
+template <typename F1, typename ...Args1>
+static no& test(...);
 
 
 int main() {
 
-	auto f = [] (double x) { return x*x-3*x+2;};
+	auto f = [] (double x, double y) { return x + y; };
+	std::cout << (sizeof(test<decltype(f), double, double>(nullptr)) == sizeof(yes)) << std::endl;
+	/*
+	std::function<vec(vec,double)> minus = [] (arma::vec const& col, double const& x) -> arma::vec { return col-x; };
 
-	double x0 = 0;
-	int status = newtonroot(f, x0);
-	std::cout << status << std::endl << x0 << std::endl;
+	return_t<decltype(minus), vec, double>* ptr;
+	std::cout << typeid(ptr).name() << std::endl;
 
-	x0 = 5;
-	status = newtonroot(f, x0);
-	std::cout  << status << std::endl<< x0 << std::endl;
-
-	auto g  = [] (vec x) -> vec { return vec{x(0)-2*x(1), x(1)*x(1)-x(1)-2};};
-	vec y0 = {0,0};
-	status = newtonroot(g, y0);
-	std::cout << status << std::endl;
-	y0.print();
-
+	std::cout << (sizeof(test<decltype(minus), vec, double>(nullptr)) == sizeof(yes)) << std::endl;
+	*/
+	/*
+	std::cout << typeid(decltype(minus)).name() << std::endl;
+	std::cout << typeid(minus).name() << std::endl;
+	std::cout << is_valid_call<decltype(minus), vec, double>::value << std::endl;
+	std::cout << typeid(is_valid_call<decltype(minus), vec, double>::return_type).name() << std::endl;
+	*/
 	
 	return 0;
 }

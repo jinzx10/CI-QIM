@@ -1,6 +1,7 @@
 #include <mpi.h>
+#include <string>
 #include "TwoPara.h"
-#include "arma_mpi_helper.h"
+#include "mpi_helper.h"
 #include "arma_helper.h"
 #include "math_helper.h"
 #include "widgets.h"
@@ -25,8 +26,9 @@ int main(int, char** argv) {
 	double dos_width = 0.0;
 	if (id == 0) {
 		readargs(argv, hybrid, dos_base, dos_peak, dos_width);
+		datadir += std::to_string(hybrid) + "/";
 	}
-	bcast(&hybrid, &dos_base, &dos_peak, &dos_width);
+	bcast(hybrid, dos_base, dos_peak, dos_width);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -69,7 +71,7 @@ int main(int, char** argv) {
 	if (id < rem)
 		nx_local += 1;
 
-	// global variables (only proc 0 will initialize them)
+	// global variables (used by proc 0)
 	vec E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp;
 
 	if (id == 0) {

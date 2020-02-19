@@ -5,74 +5,56 @@ ODIR 			= ${ROOTDIR}/obj
 SDIR 			= ${ROOTDIR}/src
 
 CC 				= mpicxx
-CPPFLAGS 		= -I${IDIR} -O2 -DNO_VELOCITY_REVERSAL
+CPPFLAGS 		= -std=c++11 -O2 -I${IDIR} # -DNO_VELOCITY_REVERSAL
 LDFLAGS 		= -larmadillo
 
 vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
-dc_deps 				= 
-dc_deps_h 				= arma_helper
-
-TwoPara_deps 			= dc
+TwoPara_deps 			= 
 TwoPara_deps_h 			= arma_helper math_helper
 
-TwoPara_interp_deps 	= 
-TwoPara_interp_deps_h 	= arma_helper math_helper
+#
+#TwoPara_interp_deps 	= 
+#TwoPara_interp_deps_h 	= arma_helper math_helper
+#
+#FSSH_deps 				= dc TwoPara
+#FSSH_deps_h 			= arma_helper
+#
+#FSSH_interp_deps 		= TwoPara_interp 
+#FSSH_interp_deps_h 		= arma_helper math_helper
+#
+#BO_deps 				= TwoPara_interp 
+#BO_deps_h 				= arma_helper math_helper
+#
+#main_deps 				= TwoPara_interp FSSH_interp dc
+#main_deps_h 			= arma_helper math_helper arma_mpi_helper 
+#
+executables	 	= $(addprefix ${BDIR}/run_, TwoPara)
 
-FSSH_deps 				= dc TwoPara
-FSSH_deps_h 			= arma_helper
-
-FSSH_interp_deps 		= TwoPara_interp 
-FSSH_interp_deps_h 		= arma_helper math_helper
-
-BO_deps 				= TwoPara_interp 
-BO_deps_h 				= arma_helper math_helper
-
-main_deps 				= TwoPara_interp FSSH_interp dc
-main_deps_h 			= arma_helper math_helper arma_mpi_helper 
-
-exe_test_src 	= $(addprefix ${BDIR}/test_, TwoPara dc FSSH TwoPara_interp FSSH_interp BO)
-exe_test_hdr 	= $(addprefix ${BDIR}/test_, )
-exe_all 		= ${BDIR}/main $(exe_test_src) $(exe_test_hdr)
-
-obj_test_src 	= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${exe_test_src})
-obj_test_hdr 	= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${exe_test_hdr})
+obj_run 		= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${executables})
 
 gen_obj 		= $(patsubst %, ${ODIR}/%.o, $(1))
 gen_hdr 		= $(patsubst %, ${IDIR}/%.h, $(1))
 
 
 .PHONY: all
-all 			: ${exe_all}
+all 			: ${executables}
 % 				: ${BDIR}/% ;
 
 
-${BDIR}/main 	: ${ODIR}/main.o $(call gen_obj,${main_deps}) | ${BDIR}
-	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
-
 .SECONDEXPANSION:
-${exe_test_src} : ${BDIR}/test_% : ${ODIR}/test_%.o ${ODIR}/%.o $$(call gen_obj,$${$$*_deps}) | ${BDIR}
+${executables} 	: ${BDIR}/run_% : ${ODIR}/run_%.o ${ODIR}/%.o $$(call gen_obj,$${$$*_deps}) | ${BDIR}
 	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
 
-${exe_test_hdr} : ${BDIR}/test_% : ${ODIR}/test_%.o $$(call gen_obj,$${$$*_deps}) | ${BDIR}
-	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
-
-
-${ODIR}/main.o 	: main.cpp $(call gen_hdr,${main_deps_h} ${main_deps}) | ${ODIR}
+${obj_run} : ${ODIR}/run_%.o : run_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h}) mpi_helper.h widgets.h | ${ODIR}
 	${CC} -c $< -o $@ ${CPPFLAGS}
 
-${obj_test_src} : ${ODIR}/test_%.o : test_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
-	${CC} -c $< -o $@ ${CPPFLAGS}
-
-${obj_test_hdr} : ${ODIR}/test_%.o : test_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
-	${CC} -c $< -o $@ ${CPPFLAGS}
-
-${ODIR}/%.o		: %.cpp %.h $$(call gen_hdr,$${$$*_deps_h} $${$$*_deps}) | ${ODIR}
+${ODIR}/%.o		: %.cpp %.h $$(call gen_hdr,$${$$*_deps_h}) | ${ODIR}
 	${CC} -c $< -o $@ ${CPPFLAGS}
 
 
-${BDIR} ${ODIR} ${LDIR} :
+${BDIR} ${ODIR} :
 	mkdir -p $@
 
 
