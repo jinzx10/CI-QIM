@@ -16,7 +16,17 @@ int main(int, char** argv) {
 	::MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
 	Stopwatch sw;
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/TwoPara/Gamma/00128/";
+	std::string datadir = "/home/zuxin/job/CI-QIM/data/TwoPara/Gamma/";
+
+	// parameters to be read from the command line
+	double hybrid = 0.0;
+	double dos_base = 0.0;
+	double dos_peak = 0.0;
+	double dos_width = 0.0;
+	if (id == 0) {
+		readargs(argv, hybrid, dos_base, dos_peak, dos_width);
+	}
+	bcast(&hybrid, &dos_base, &dos_peak, &dos_width);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -26,7 +36,8 @@ int main(int, char** argv) {
 	double omega = 0.0002;
 	double mass = 2000;
 	double dE_fil = -0.0038;
-	
+	double xc = 0.5*(x0_mpt+x0_fil) + dE_fil / ( mass*omega*omega*(x0_fil-x0_mpt) );
+
 	auto E_mpt = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_mpt) * (x - x0_mpt);};
 	auto E_fil = [&] (double const& x) { return 0.5 * mass * omega* omega* 
@@ -37,22 +48,26 @@ int main(int, char** argv) {
 	double bath_max = W;
 	uword n_bath = 1000;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
-	double dos = 1.0 / (bath(1) - bath(0));
+	vec dos = 1.0 / diff(bath);
+	dos.Mat<double>::insert_rows(0,1);
+	dos(dos.n_elem-1) = dos(dos.n_elem-2);
 
 	uword n_occ = n_bath / 2;
 
-	double hybrid = 0.0128;
-	vec cpl = ones<vec>(n_bath) * sqrt(hybrid/2/datum::pi/dos);
+	vec cpl = sqrt(hybrid/2.0/datum::pi/dos);
 
 	// unevenly-spaced x grid; more samplings around the crossing point
-	double dw = 2.8;
-	auto x_density = [dw] (double x) { 
-		return 9.01 + 32.2 * exp(-(x-8.0)*(x-8.0)/2.0/dw/dw);
+	auto density = [&] (double x) { 
+		return dos_base + 
+			dos_peak * exp( -(x-xc)*(x-xc) / 2.0 / dos_width / dos_width );
 	};
-	vec xgrid = grid(-20, 40, x_density);
+	vec xgrid = grid(-20, 40, density);
 	uword nx = xgrid.n_elem;
 
 	int nx_local = nx / nprocs;
+	int rem = nx % nprocs;
+	if (id < rem)
+		nx_local += 1;
 
 	// global variables (only proc 0 will initialize them)
 	vec E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp;
@@ -92,7 +107,7 @@ int main(int, char** argv) {
 		std::cout << id*nx_local+i+1 << "/" << nx << " finished" << std::endl;
 	}
 
-	gather( E0_local, E0, E1_local, E1, F0_local, F0, F1_local, F1,
+	gatherv( E0_local, E0, E1_local, E1, F0_local, F0, F1_local, F1,
 			dc01_local, dc01, dc01x_local, dc01x,
 			Gamma_local, Gamma, n_imp_local, n_imp );
 
