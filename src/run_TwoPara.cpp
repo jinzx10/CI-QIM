@@ -27,6 +27,7 @@ int main(int, char** argv) {
 	if (id == 0) {
 		readargs(argv, hybrid, dos_base, dos_peak, dos_width);
 		datadir += std::to_string(hybrid) + "/";
+		std::cout << "data will be saved to: " << datadir << std::endl;
 	}
 	bcast(hybrid, dos_base, dos_peak, dos_width);
 
