@@ -150,7 +150,7 @@ vec TwoPara::force() {
 
 mat TwoPara::dc(uword const& sz, std::string const& method) {
 	double dx = 1e-4;
-	mat coef_ = join_d(vec{1.0}, vec_cis_sub.head_cols(sz-1));
+	mat coef_ = join_d<double>(vec{1.0}, vec_cis_sub.head_cols(sz-1));
 
 	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
 	model_.set_and_calc_cis_sub(x+dx);
