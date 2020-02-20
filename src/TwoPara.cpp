@@ -277,12 +277,14 @@ mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& 
 	} else { // approximated by orbital overlap
 
 		/* overlap = [
-    1              , do_'*dv         , do_'*vec_vir           , (vec_occ_'*dv)'         ;
-    dv_'*do        , 1               , dv_'*vec_vir           , -(vec_occ_'*do)'        ;
-    vec_vir_'*do   , vec_vir_'*dv    , vec_vir_'*vec_vir      , zeros(n_vir-1, n_occ-1) ;
-    (dv_'*vec_occ)', -(do_'*vec_occ)', zeros(n_occ-1, n_vir-1), -(vec_occ_'*vec_occ)'    ];
+		 *    1     ,  <do_|dv> , <do_|b> ,  <j_|dv>'  ;
+		 * <dv_|do> ,     1     , <dv_|b> , -<j_|do>'  ;
+		 * <a_|do>  ,  <a_|dv>  , <a_|b>  ,    0	   ;
+		 * <dv_|i>' , -<do_|i>' ,    0    ,   (*)		];
+		 *
+		 * (*) = delta_{ij} - <j_|i> + delta_{ij}<j_|i>
+		 */
 
-	*/
 		// indices for basis determinants
 		span span_doa = span(2, n_vir);
 		span span_idv = span(n_vir+1, n_vir+n_occ-1);
@@ -310,7 +312,7 @@ mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& 
 		ovl(span_idv, 0) = ovl_orb(n_occ, span_occ).t();
 		ovl(span_idv, 1) = -ovl_orb(0, span_occ).t();
 		ovl(span_idv, span_doa) = zeros(n_occ-1, n_vir-1);
-		ovl(span_idv, span_idv) = -ovl_orb(span_occ, span_occ).t();
+		ovl(span_idv, span_idv) = eye(n_occ-1, n_occ-1) - ovl_orb(span_occ, span_occ).t() + eye(n_occ-1, n_occ-1) % ovl_orb(span_occ, span_occ).t();
 	}
 
 	return ovl;
