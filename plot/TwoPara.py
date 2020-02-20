@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 
-rootdir = '/home/zuxin/job/CI-QIM/'
+#rootdir = '/home/zuxin/job/CI-QIM/'
+rootdir = '/home/jinzx10/job/CI-QIM/'
 num_figs = 5 
-datadir=rootdir+'data/TwoPara/Gamma/0.001600/'
+datadir=rootdir+'data/TwoPara/Gamma/0.0016/'
 
 xgrid = np.fromfile(datadir+'xgrid.dat')
 E0 = np.fromfile(datadir+'E0.dat')
@@ -13,6 +14,7 @@ F1 = np.fromfile(datadir+'F1.dat')
 Gamma = np.fromfile(datadir+'Gamma.dat')
 n_imp = np.fromfile(datadir+'n_imp.dat')
 dc01x = np.fromfile(datadir+'dc01x.dat')
+dc01 = np.fromfile(datadir+'dc01.dat')
 
 #xfine = np.fromfile('./x_fine.dat')
 #E0_fine = np.fromfile('./E0_fine.dat')
@@ -47,6 +49,7 @@ plt.plot(xgrid[1:], f_dx_1)
 
 plt.subplot(1, num_figs, 5)
 plt.plot(xgrid, np.abs(dc01x))
+plt.plot(xgrid, np.abs(dc01))
 #plt.plot(xfine, dc01_fine, linestyle='dotted')
 
 plt.show()
