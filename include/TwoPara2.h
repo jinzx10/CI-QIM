@@ -3,15 +3,15 @@
 
 #include <armadillo>
 
-struct TwoPara_interp
+struct TwoPara2
 {
-	TwoPara_interp(		arma::vec	const&		xgrid_,
-						arma::vec 	const&		E0_,
-						arma::vec 	const&		E1_,
-						arma::vec 	const&		F0_,
-						arma::vec 	const&		F1_,
-						arma::vec 	const&		dc01_,
-						arma::vec 	const&		Gamma_		);
+	TwoPara2(	arma::vec	const&		xgrid_,
+				arma::vec 	const&		E0_,
+				arma::vec 	const&		E1_,
+				arma::vec 	const&		F0_,
+				arma::vec 	const&		F1_,
+				arma::vec 	const&		dc01_,
+				arma::vec 	const&		Gamma_		);
 
 	double				E_adi(arma::uword const& state, double const& x);
 	arma::vec			E_adi(double const& x);

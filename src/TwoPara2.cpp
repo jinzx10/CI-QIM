@@ -1,9 +1,9 @@
-#include "TwoPara_interp.h"
-#include "interp.h"
+#include "TwoPara2.h"
+#include "math_helper.h"
 
 using namespace arma;
 
-TwoPara_interp::TwoPara_interp(
+TwoPara2::TwoPara2(
 		vec		const&		xgrid_,
 		vec 	const&		E0_,
 		vec 	const&		E1_,
@@ -15,43 +15,43 @@ TwoPara_interp::TwoPara_interp(
 	dc01_(dc01_), Gamma_(Gamma_)
 {}
 
-double TwoPara_interp::E0(double const& x) {
+double TwoPara2::E0(double const& x) {
 	return lininterp(x, xgrid_, E0_);
 }
 
-double TwoPara_interp::E1(double const& x) {
+double TwoPara2::E1(double const& x) {
 	return lininterp(x, xgrid_, E1_);
 }
 
-double TwoPara_interp::F0(double const& x) {
+double TwoPara2::F0(double const& x) {
 	return lininterp(x, xgrid_, F0_);
 }
 
-double TwoPara_interp::F1(double const& x) {
+double TwoPara2::F1(double const& x) {
 	return lininterp(x, xgrid_, F1_);
 }
 
-double TwoPara_interp::Gamma(double const& x) {
+double TwoPara2::Gamma(double const& x) {
 	return lininterp(x, xgrid_, Gamma_);
 }
 
-double TwoPara_interp::dc01(double const& x) {
+double TwoPara2::dc01(double const& x) {
 	return lininterp(x, xgrid_, dc01_);
 }
 
-double TwoPara_interp::E_adi(uword const& state, double const& x) {
+double TwoPara2::E_adi(uword const& state, double const& x) {
 	return (state) ? E1(x) : E0(x);
 }
 
-vec TwoPara_interp::E_adi(double const& x) {
+vec TwoPara2::E_adi(double const& x) {
 	return vec{E0(x), E1(x)};
 }
 
-double TwoPara_interp::force(uword const& state, double const& x) {
+double TwoPara2::force(uword const& state, double const& x) {
 	return (state) ? F1(x) : F0(x);
 }
 
-mat TwoPara_interp::dc(double const& x) {
+mat TwoPara2::dc(double const& x) {
 	double d01 = dc01(x);
 	return mat{ {0.0, d01}, {-d01, 0.0} };
 }

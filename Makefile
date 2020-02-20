@@ -12,25 +12,21 @@ vpath %.h ${IDIR}
 vpath %.cpp ${SDIR}
 
 TwoPara_deps 			= 
-TwoPara_deps_h 			= arma_helper math_helper
+TwoPara_deps_h 			= arma_helper math_helper 
 
-#
-#TwoPara_interp_deps 	= 
-#TwoPara_interp_deps_h 	= arma_helper math_helper
-#
-#FSSH_deps 				= dc TwoPara
+TwoPara2_deps 			= 
+TwoPara2_deps_h 		= math_helper
+
+#FSSH_deps 				= TwoPara
 #FSSH_deps_h 			= arma_helper
 #
-#FSSH_interp_deps 		= TwoPara_interp 
-#FSSH_interp_deps_h 		= arma_helper math_helper
+#FSSH2_deps 			= TwoPara2
+#FSSH2_deps_h 			= arma_helper math_helper
 #
-#BO_deps 				= TwoPara_interp 
+#BO_deps 				= TwoPara2
 #BO_deps_h 				= arma_helper math_helper
-#
-#main_deps 				= TwoPara_interp FSSH_interp dc
-#main_deps_h 			= arma_helper math_helper arma_mpi_helper 
-#
-executables	 	= $(addprefix ${BDIR}/run_, TwoPara)
+
+executables	 	= $(addprefix ${BDIR}/run_, TwoPara TwoPara2 FSSH2 Langevin)
 
 obj_run 		= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${executables})
 
@@ -47,7 +43,7 @@ all 			: ${executables}
 ${executables} 	: ${BDIR}/run_% : ${ODIR}/run_%.o ${ODIR}/%.o $$(call gen_obj,$${$$*_deps}) | ${BDIR}
 	${CC} $^ -o $@ ${CPPFLAGS} ${LDFLAGS}
 
-${obj_run} : ${ODIR}/run_%.o : run_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h}) mpi_helper.h widgets.h | ${ODIR}
+${obj_run} : ${ODIR}/run_%.o : run_%.cpp %.h $$(call gen_hdr,$${$$*_deps_h}) arma_helper.h mpi_helper.h widgets.h | ${ODIR}
 	${CC} -c $< -o $@ ${CPPFLAGS}
 
 ${ODIR}/%.o		: %.cpp %.h $$(call gen_hdr,$${$$*_deps_h}) | ${ODIR}
