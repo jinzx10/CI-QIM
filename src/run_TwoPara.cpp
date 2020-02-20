@@ -17,24 +17,27 @@ int main(int, char** argv) {
 	::MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
 	Stopwatch sw;
-	std::string datadir = "/home/zuxin/job/CI-QIM/data/TwoPara/Gamma/";
 
 	////////////////////////////////////////////////////////////
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
-	// parameters to be read from the command line
+	// parameters to read from the command line
+	std::string datadir;
+	uword n_bath = 0;
 	double hybrid = 0.0;
 	double dos_base = 0.0;
 	double dos_peak = 0.0;
 	double dos_width = 0.0;
+
 	if (id == 0) {
-		readargs(argv, hybrid, dos_base, dos_peak, dos_width);
-		datadir += std::to_string(hybrid) + "/";
+		readargs(argv, datadir, n_bath, hybrid, dos_base, dos_peak, dos_width);
 		std::cout << "data will be saved to: " << datadir << std::endl;
+		std::cout << "number of bath states: " << n_bath << std::endl;
+		std::cout << "hybridization Gamma: " << hybrid << std::endl;
 		std::cout << "xgrid density: " << "base = " << dos_base 
 			<< "   peak = " << dos_peak << "   width = " << dos_width << std::endl;
 	}
-	bcast(hybrid, dos_base, dos_peak, dos_width);
+	bcast(n_bath, hybrid, dos_base, dos_peak, dos_width);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -54,7 +57,6 @@ int main(int, char** argv) {
 	double W = 0.1;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 400;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	vec dos = 1.0 / diff(bath);
 	dos.insert_rows(dos.n_elem, 1);
@@ -134,6 +136,8 @@ int main(int, char** argv) {
 				n_imp, "n_imp.dat"
 		);
 		sw.report();
+		std::cout << "end of program" << std::endl;
+		std::cout << std::endl << std::endl << std::endl;
 	}
 
 	MPI_Finalize();
