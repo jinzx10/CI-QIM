@@ -19,6 +19,9 @@ int main(int, char** argv) {
 	Stopwatch sw;
 	std::string datadir = "/home/zuxin/job/CI-QIM/data/TwoPara/Gamma/";
 
+	////////////////////////////////////////////////////////////
+	//					Read-in Stage
+	////////////////////////////////////////////////////////////
 	// parameters to be read from the command line
 	double hybrid = 0.0;
 	double dos_base = 0.0;
@@ -28,6 +31,8 @@ int main(int, char** argv) {
 		readargs(argv, hybrid, dos_base, dos_peak, dos_width);
 		datadir += std::to_string(hybrid) + "/";
 		std::cout << "data will be saved to: " << datadir << std::endl;
+		std::cout << "xgrid density: " << "base = " << dos_base 
+			<< "   peak = " << dos_peak << "   width = " << dos_width << std::endl;
 	}
 	bcast(hybrid, dos_base, dos_peak, dos_width);
 
@@ -49,10 +54,10 @@ int main(int, char** argv) {
 	double W = 0.1;
 	double bath_min = -W;
 	double bath_max = W;
-	uword n_bath = 1000;
+	uword n_bath = 400;
 	vec bath = linspace<vec>(bath_min, bath_max, n_bath);
 	vec dos = 1.0 / diff(bath);
-	dos.Mat<double>::insert_rows(0,1);
+	dos.insert_rows(dos.n_elem, 1);
 	dos(dos.n_elem-1) = dos(dos.n_elem-2);
 
 	uword n_occ = n_bath / 2;
@@ -72,15 +77,6 @@ int main(int, char** argv) {
 	if (id < rem)
 		nx_local += 1;
 
-	// global variables (used by proc 0)
-	vec E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp;
-
-	if (id == 0) {
-		set_size( nx, E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp );
-		sw.run();
-	}
-
-
 	// local variables and their initialization
 	vec E0_local, E1_local, F0_local, F1_local,
 		dc01_local, dc01x_local, Gamma_local, n_imp_local;
@@ -88,12 +84,22 @@ int main(int, char** argv) {
 	set_size( nx_local, E0_local, E1_local, F0_local, F1_local,
 			dc01_local, dc01x_local, Gamma_local, n_imp_local );
 
+	// global variables (used by proc 0)
+	vec E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp;
+
+	if (id == 0) {
+		set_size( nx, E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp );
+		std::cout << "number of x grid points: " << nx << std::endl;
+		sw.run();
+	}
+
 
 	// Two parabola model
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
 
+	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
 	for (int i = 0; i != nx_local; ++i) {
-		double x = xgrid(id*nx_local+i);
+		double x = xgrid(idx_start+i);
 		model.set_and_calc_cis_sub(x);
 		model.calc_val_cis_bath();
 		model.calc_Gamma(1);
@@ -102,12 +108,12 @@ int main(int, char** argv) {
 		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
 		F0_local(i) = model.force(0);
 		F1_local(i) = model.force(1);
-		dc01_local(i) = model.dc(2, "exact")(0,1);
+		//dc01_local(i) = model.dc(2, "exact")(0,1);
 		dc01x_local(i) = model.dc(2, "approx")(0,1);
 		Gamma_local(i) = model.Gamma(0);
 		n_imp_local(i) = model.ev_n;
 
-		std::cout << id*nx_local+i+1 << "/" << nx << " finished" << std::endl;
+		std::cout << idx_start+i+1 << "/" << nx << " finished" << std::endl;
 	}
 
 	gatherv( E0_local, E0, E1_local, E1, F0_local, F0, F1_local, F1,
@@ -122,7 +128,7 @@ int main(int, char** argv) {
 				E1, "E1.dat",
 				F0, "F0.dat",
 				F1, "F1.dat",
-				dc01, "dc01.dat", 
+				//dc01, "dc01.dat", 
 				dc01x, "dc01x.dat", 
 				Gamma, "Gamma.dat",
 				n_imp, "n_imp.dat"
