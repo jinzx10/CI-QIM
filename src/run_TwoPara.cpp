@@ -110,7 +110,7 @@ int main(int, char** argv) {
 		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
 		F0_local(i) = model.force(0);
 		F1_local(i) = model.force(1);
-		dc01_local(i) = model.dc(2, "exact")(0,1);
+		//dc01_local(i) = model.dc(2, "exact")(0,1);
 		dc01x_local(i) = model.dc(2, "approx")(0,1);
 		Gamma_local(i) = model.Gamma(0);
 		n_imp_local(i) = model.ev_n;
@@ -130,7 +130,7 @@ int main(int, char** argv) {
 				E1, "E1.dat",
 				F0, "F0.dat",
 				F1, "F1.dat",
-				dc01, "dc01.dat", 
+				//dc01, "dc01.dat", 
 				dc01x, "dc01x.dat", 
 				Gamma, "Gamma.dat",
 				n_imp, "n_imp.dat"
