@@ -36,7 +36,7 @@ inline arma::mat gauss(arma::vec const& x, arma::rowvec const& y, double const& 
 }
 
 
-// find the smallest number
+// find the smallest/largest number
 inline double min(double const& i) {
 	return i;
 }
@@ -45,6 +45,16 @@ template <typename ...Ts>
 double min(double const& i, Ts const& ...args) {
     double tmp = min(args...);
     return ( i < tmp ) ? i : tmp;
+}
+
+inline double max(double const& i) {
+	return i;
+}
+
+template <typename ...Ts>
+double max(double const& i, Ts const& ...args) {
+    double tmp = max(args...);
+    return ( i > tmp ) ? i : tmp;
 }
 
 
