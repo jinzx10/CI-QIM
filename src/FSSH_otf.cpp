@@ -1,59 +1,99 @@
-#include <FSSH_interp.h>
+#include <FSSH.h>
+#include <dc.h>
+#include <complex>
+#include <chrono>
 #include <arma_helper.h>
-#include "auxmath.h"
 
 using namespace arma;
 
-FSSH_interp::FSSH_interp( 
-		TwoPara_interp*				model_,
+FSSH::FSSH( 
+		TwoPara*					model_,
 		double			const&		mass_,
 		double			const&		dtc_,
 		uword			const& 		ntc_,
 		double			const&		kT_,
-		double			const&		gamma_
+		double			const&		gamma_,
+		uword			const&		sz_ 
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
-	x(0), v(0), F_pes(0), sz( model->sz_elec ), span_exc( span(1,sz-1) ),
-	state(0), rho(zeros<cx_mat>(sz, sz)),
+	x(0), v(0), F_pes(0),
+	sz( (sz_) ? sz_ : model->sz_rel ),
+	state(0), rho(zeros<cx_mat>(sz, sz)), T(zeros(sz, sz)),
+	span_cis(span(1, sz-1)),
 	E_adi(zeros(sz)), rho_eq(zeros(sz)),
 	counter(0), has_hop(false),
 	x_t(zeros(ntc)), v_t(zeros(ntc)), E_t(zeros(ntc)),
-	state_t(zeros<uvec>(ntc)), num_frustrated_hops(0)
+	state_t(zeros<uvec>(ntc))
 {}
 
-void FSSH_interp::initialize(bool const& state0, double const& x0, double const& v0, cx_mat const& rho0) {
+void FSSH::initialize(bool const& state0, double const& x0, double const& v0, cx_mat const& rho0) {
 	clear();
 	state = state0;
 	x = x0;
 	v = v0;
 	rho = rho0;
-	E_adi = model->E_adi(x);
+	model->set_and_calc(x);
+	E_adi = model->E_rel().head(sz);
 	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
 	collect();
 }
 
-void FSSH_interp::evolve_nucl() {
+void FSSH::evolve_nucl() {
+	// store the necessary data for the time derivative coupling calculation
+	if (counter == 1) {
+		vec_do_ = model->vec_do;
+		vec_dv_ = model->vec_dv;
+		vec_o_ = model->vec_o;
+		vec_v_ = model->vec_v;
+		coef_ = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+	} else {
+		vec_do_ = vec_do;
+		vec_dv_ = vec_dv;
+		vec_o_ = vec_o;
+		vec_v_ = vec_v;
+		coef_ = coef;
+	}
+
 	// Velocity-Verlet (with external phononic friction)
 	double F_fric = -gamma * v;
 	double F_rand = sqrt( 2.0 * gamma * kT / dtc ) * randn();
-	F_pes = model->force(state, x);
+	F_pes = model->force(state);
 	double a = ( F_pes + F_fric + F_rand ) / mass;
 	x += v * dtc + 0.5 * a * dtc * dtc;
-	F_pes = model->force(state, x);
+	model->set_and_calc(x);
+	F_pes = model->force(state);
 	double a_new = ( F_pes + F_fric + F_rand ) / mass;
 	v += 0.5 * (a + a_new) * dtc;
 
+	// calculate the time derivative coupling
+	vec_do = model->vec_do;
+	vec_dv = model->vec_dv;
+	vec_o = model->vec_o;
+	vec_v = model->vec_v;
+	coef = join_d(vec{1}, model->vec_cis_sub.head_cols(sz-1));
+
+	adj_phase(vec_do_, vec_do);
+	adj_phase(vec_dv_, vec_dv);
+	adj_phase(vec_o_, vec_o);
+	adj_phase(vec_v_, vec_v);
+	adj_phase(coef_, coef);
+
+	mat overlap = coef_.t() * ovl(vec_do_, vec_o_, vec_dv_, vec_v_, 
+			vec_do, vec_o, vec_dv, vec_v) * coef;
+
+	// Lowdin-orthoginalization
+	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
+
 	// time derivative coupling matrix
-	T = v * model->dc(x);
+	T = real( logmat(overlap) ) / dtc;
 	
 	// instantaneous adiabatic energies and equilibrium population
-	E_adi = model->E_adi(x);
+	E_adi = model->E_rel().head(sz);
 	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
-	Gamma_rlx = vec{model->Gamma(x)};
 }
 
-void FSSH_interp::calc_dtq() {
+void FSSH::calc_dtq() {
 	double dtq1 = 0.02 / abs(T).max();
 	double dtq2 = 0.02 / abs(E_adi - mean(E_adi)).max();
 	dtq = min(dtc, dtq1, dtq2);
@@ -61,34 +101,34 @@ void FSSH_interp::calc_dtq() {
 	dtq = (rcq > 1) ? dtc / rcq : dtc;
 }
 
-double FSSH_interp::energy() {
+double FSSH::energy() {
 	double E_kin = 0.5 * mass * v * v;
+	double E_pot = model->E_mpt(x);
 	double E_elec = E_adi(state);
-	return E_kin + E_elec;
+	return E_kin + E_pot + E_elec;
 }
 
-cx_mat FSSH_interp::L_rho(cx_mat const& rho_) {
+cx_mat FSSH::L_rho(cx_mat const& rho_) {
 	cx_mat tmp = zeros<cx_mat>(sz, sz);
 
 	vec L_diag = zeros(sz);
 	vec rho_diag = real(rho_.diag());
-
-	L_diag(span_exc) = Gamma_rlx % ( rho_diag(span_exc) - rho_eq(span_exc) );
-	L_diag(0) = -accu( L_diag(span_exc) );
+	L_diag(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
+	L_diag(0) = -accu( L_diag(span_cis) );
 
 	tmp.diag() = conv_to<cx_vec>::from(L_diag);
-	tmp(0, span_exc) = 0.5 * Gamma_rlx.t() % rho_(0, span_exc);
-	tmp(span_exc, 0) = 0.5 * Gamma_rlx % rho_(span_exc, 0);
+	tmp(0, span_cis) = 0.5 * model->Gamma.head(sz-1).t() % rho_(0, span_cis);
+	tmp(span_cis, 0) = 0.5 * model->Gamma.head(sz-1) % rho_(span_cis, 0);
 	return tmp;
 }
 
-cx_mat FSSH_interp::drho_dt(cx_mat const& rho_) {
+cx_mat FSSH::drho_dt(cx_mat const& rho_) {
 	std::complex<double> I{0.0, 1.0};
-	return -I * rho_ % bcast_op<double>(E_adi, E_adi.t(), std::minus<>()) 
+	return -I * rho_ % bcast_op(E_adi, E_adi.t(), std::minus<>()) 
 		- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
-void FSSH_interp::evolve_elec() {
+void FSSH::evolve_elec() {
 	cx_mat k1 = dtq * drho_dt(rho);
 	cx_mat k2 = dtq * drho_dt(rho + 0.5*k1);
 	cx_mat k3 = dtq * drho_dt(rho + 0.5*k2);
@@ -96,7 +136,7 @@ void FSSH_interp::evolve_elec() {
 	rho += (k1 + 2.0*k2 + 2.0*k3 + k4) / 6.0;
 }
 
-void FSSH_interp::hop() {
+void FSSH::hop() {
 	int v_sign = (v >= 0) * 1 + (v < 0) * -1;
 
 	// individual components in (d/dt)rho_mm
@@ -106,7 +146,7 @@ void FSSH_interp::hop() {
 		q(0) = model->Gamma(state-1) * ( rho(state, state).real() - rho_eq(state) );
 	} else {
 		vec rho_diag = real(rho.diag());
-		q.tail(sz-1) = Gamma_rlx % ( rho_diag(span_exc) - rho_eq(span_exc) );
+		q(span_cis) = model->Gamma.head(sz-1) % ( rho_diag(span_cis) - rho_eq(span_cis) );
 	}
 
 	// hopping probability to each state
@@ -151,32 +191,28 @@ void FSSH_interp::hop() {
 		state = target;
 		has_hop = 1;
 	} else { // frustrated hops
-		num_frustrated_hops += 1;
-#ifndef NO_VELOCITY_REVERSAL
-		double F_tmp = model->force(target, x);
+		double F_tmp = model->force(target);
 		if ( F_pes*F_tmp < 0 && F_tmp*v < 0  ) // velocity reveral
 			v = -v;
-#endif
 	}
 }
 
-void FSSH_interp::collect() {
+void FSSH::collect() {
 	state_t(counter) = state;
 	x_t(counter) = x;
 	v_t(counter) = v;
 	E_t(counter) = energy();
 }
 
-void FSSH_interp::clear() {
+void FSSH::clear() {
 	counter = 0;
 	x_t.zeros();
 	v_t.zeros();
 	state_t.zeros();
 	E_t.zeros();
-	num_frustrated_hops = 0;
 }
 
-void FSSH_interp::propagate() {
+void FSSH::propagate() {
 	for (counter = 1; counter != ntc; ++counter) {
 		evolve_nucl();
 		calc_dtq();
