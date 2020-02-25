@@ -49,7 +49,7 @@ plt.plot(xgrid[1:], f_dx_1)
 
 plt.subplot(1, num_figs, 5)
 plt.plot(xgrid, np.abs(dc01x))
-plt.plot(xgrid, np.abs(dc01), marker='.')
+plt.plot(xgrid, np.abs(dc01), linestyle=':')
 print(np.linalg.norm(np.abs(dc01x) - np.abs(dc01) ))
 #plt.plot(xfine, dc01_fine, linestyle='dotted')
 
