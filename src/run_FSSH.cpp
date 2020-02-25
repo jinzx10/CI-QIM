@@ -34,7 +34,7 @@ int main(int, char**argv) {
 		std::cout << "maximun time = " << t_max << std::endl;
 		std::cout << "classical time step size = " << dtc << std::endl;
 	}
-	bcast(readdir, n_trajs, t_max, dtc); // TBD! may not work for string
+	bcast(readdir, n_trajs, t_max, dtc);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -79,7 +79,7 @@ int main(int, char**argv) {
 	}
 	bcast(dtc);
 
-#ifdef DEBUG_MODE
+#ifdef NO_FRICTION
 	double fric_gamma = 0;
 #else
 	double fric_gamma = 2.0 * mass * omega;
