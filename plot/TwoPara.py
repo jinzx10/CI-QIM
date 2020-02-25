@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt 
+import os
 
 #rootdir = '/home/zuxin/job/CI-QIM/'
-rootdir = '/home/jinzx10/job/CI-QIM/'
+filedir=os.path.dirname(os.path.abspath(__file__))
+datadir=rootdir+'/../data/TwoPara/Gamma/0.0016/'
+
 num_figs = 5 
-datadir=rootdir+'data/TwoPara/Gamma/0.0016/'
 
 xgrid = np.fromfile(datadir+'xgrid.dat')
 E0 = np.fromfile(datadir+'E0.dat')
