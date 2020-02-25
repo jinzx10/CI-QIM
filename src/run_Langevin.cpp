@@ -1,15 +1,13 @@
 #include <mpi.h>
-#include <chrono>
-#include <cstdlib>
-#include "BO.h"
-#include "TwoPara_interp.h"
-#include "arma_mpi_helper.h"
+#include "Langevin.h"
+#include "TwoPara2.h"
+#include "mpi_helper.h"
 #include "arma_helper.h"
+#include "widgets.h"
 
 using namespace arma;
-using iclock = std::chrono::high_resolution_clock;
 
-int main() {
+int main(int, char** argv) {
 
 	int id, nprocs;
 
@@ -17,43 +15,46 @@ int main() {
 	::MPI_Comm_rank(MPI_COMM_WORLD, &id);
 	::MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-	iclock::time_point start;
-	std::chrono::duration<double> dur;
+	Stopwatch sw;
 
-	std::string param = "0000025";
+	////////////////////////////////////////////////////////////
+	//					Read-in Stage
+	////////////////////////////////////////////////////////////
+	std::string readdir;
+	std::string savedir;
+	double t_max;
+	double dtc;
+	int n_trajs;
 
-	std::string readdir = "/home/zuxin/job/CI-QIM/data/test_TwoPara/Gamma/";
-	std::string savedir = "/home/zuxin/job/CI-QIM/data/test_BO/Gamma/";
-
-	readdir += param + "/";
-	savedir += param + "/";
-
-	std::string command = "mkdir -p " + savedir;
-
+	if (id == 0) {
+		readargs(argv, readdir, savedir, n_trajs, t_max, dtc);
+		std::cout << "data will be read from: " << readdir << std::endl;
+		std::cout << "data will be save to: " << savedir << std::endl;
+		std::cout << "number of trajectories = " << n_trajs << std::endl;
+		std::cout << "maximun time = " << t_max << std::endl;
+		std::cout << "classical time step size = " << dtc << std::endl;
+	}
+	bcast(readdir, n_trajs, t_max, dtc);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
 	////////////////////////////////////////////////////////////
-
 	vec E0, E1, F0, F1, dc01, Gamma, xgrid;
 	uword sz;
 	if (id == 0) {
-		start = iclock::now();
-
 		arma_load(readdir, 
-				xgrid, "xgrid.txt",
-				E0, "E0.txt", 
-				E1, "E1.txt",
-				F0, "F0.txt", 
-				F1, "F1.txt",
-				dc01, "dc01.txt", 
-				Gamma, "Gamma.txt"
+				xgrid, "xgrid.dat",
+				E0, "E0.dat", 
+				E1, "E1.dat",
+				F0, "F0.dat", 
+				F1, "F1.dat",
+				dc01, "dc01x.dat", 
+				Gamma, "Gamma.dat"
 		);
-
 		sz = xgrid.n_elem;
 	}
 
-	bcast(&sz);
+	bcast(sz);
 
 	if (id != 0) {
 		set_size(sz, xgrid, E0, E1, F0, F1, dc01, Gamma);
@@ -61,34 +62,34 @@ int main() {
 
 	bcast(xgrid, E0, E1, F0, F1, dc01, Gamma);
 
-	TwoPara_interp model(xgrid, E0, E1, F0, F1, arma::abs(dc01), Gamma);
+	TwoPara2 model(xgrid, E0, E1, F0, F1, arma::abs(dc01), Gamma);
 
 
 	////////////////////////////////////////////////////////////
-	//			Born-Oppenheimer Molecular Dynamics
+	//		Langevin Dynamics on the Ground Adiabat
 	////////////////////////////////////////////////////////////
 
 	double omega = 0.0002;
 	double mass = 2000;
 	double x0_mpt = 0;
 
-	double t_max = 50e5;
-	double dtc = 10;
-	int n_trajs = 960;
 	uword ntc = t_max / dtc;
 	vec time_grid;
 	if (id == 0) {
 		time_grid = linspace(0, t_max, ntc);
 		dtc = time_grid(1) - time_grid(0);
 	}
-	bcast(&dtc);
+	bcast(dtc);
 
 	double fric_gamma = 2.0 * mass * omega;
 	double kT = 9.5e-4;
 
 	int n_trajs_local = n_trajs / nprocs;
-	arma::uword sz_rho = 2;
-	BO bo(&model, mass, dtc, ntc, kT, fric_gamma);
+	int rem = n_trajs % nprocs;
+	if (id < rem)
+		n_trajs_local += 1;
+
+	Langevin lgv(&model, mass, dtc, ntc, kT, fric_gamma);
 
 	// local data
 	mat x_local, v_local, E_local;
@@ -100,7 +101,7 @@ int main() {
 
 	if (id == 0) {
 		set_size(ntc, n_trajs, x_t, v_t, E_t);
-		start = iclock::now();
+		sw.run();
 	}
 
 	// Wigner quasi-probability distribution of harmonic oscillator
@@ -118,39 +119,31 @@ int main() {
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 
-		bo.initialize(x0, v0);
-		bo.propagate();
+		lgv.initialize(x0, v0);
+		lgv.propagate();
 
-		x_local.col(i) = bo.x_t;
-		v_local.col(i) = bo.v_t;
-		E_local.col(i) = bo.E_t;
+		x_local.col(i) = lgv.x_t;
+		v_local.col(i) = lgv.v_t;
+		E_local.col(i) = lgv.E_t;
 	}
 
-	gather( x_local, x_t, v_local, v_t, E_local, E_t );
+	gatherv( x_local, x_t, v_local, v_t, E_local, E_t );
 
 	////////////////////////////////////////////////////////////
 	//					save data
 	////////////////////////////////////////////////////////////
 	if (id == 0) {
-		bool status = std::system(command.c_str());
-		if (status) {
-			savedir = "./";
-			command = "mkdir -p " + savedir;
-			status = std::system(command.c_str());
-		}
-
+		mkdir(savedir);
 		arma_save<raw_binary>( savedir, 
 				x_t, "x.dat",
 				v_t, "v.dat",
 				E_t, "E.dat",
 				time_grid, "t.dat"
 		);
-
-		dur = iclock::now() - start;
-		std::cout << dur.count() << std::endl;
+		sw.report();
 	}
 
-	::MPI_Finalize();
+	MPI_Finalize();
 
 	return 0;
 }

@@ -1,13 +1,13 @@
-#ifndef __BORN_OPPENHEIMER_DYNAMICS_H__
-#define __BORN_OPPENHEIMER_DYNAMICS_H__
+#ifndef __LANGEVIN_DYNAMICS_H__
+#define __LANGEVIN_DYNAMICS_H__
 
 #include <armadillo>
-#include <TwoPara_interp.h>
+#include <TwoPara2.h>
 
-struct BO
+struct Langevin
 {
-	BO( 
-			TwoPara_interp*				model_,
+	Langevin(
+			TwoPara2*					model_,
 			double			const&		mass_,
 			double			const&		dtc_,
 			arma::uword		const& 		ntc_,
@@ -24,7 +24,7 @@ struct BO
 
 	double						energy();
 
-	TwoPara_interp*	const		model;
+	TwoPara2*		const		model;
 	double			const		mass;
 	double 			const		dtc;
 	arma::uword		const 		ntc; // number of classical time steps

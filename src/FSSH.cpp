@@ -1,6 +1,6 @@
-#include <arma_helper.h>
 #include "FSSH.h"
 #include "math_helper.h"
+#include "arma_helper.h"
 
 using namespace arma;
 
@@ -130,7 +130,7 @@ void FSSH::hop() {
 
 	// various velocity-reversal schemes
 	int opt_velorev = 0; // default, standard velocity reversal
-	bool hop_from_dc = true;
+	bool hop_from_dc = true; // used if PARTIAL_VELOCITY_REVERSAL is set
 
 #ifdef PARTIAL_VELOCITY_REVERSAL
 	opt_velorev = 1;

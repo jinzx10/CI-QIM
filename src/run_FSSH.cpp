@@ -1,6 +1,4 @@
 #include <mpi.h>
-#include <chrono>
-#include <cstdlib>
 #include "FSSH.h"
 #include "TwoPara2.h"
 #include "mpi_helper.h"
@@ -25,18 +23,18 @@ int main(int, char**argv) {
 	std::string readdir;
 	std::string savedir;
 	int n_trajs;
-	uword ntc;
+	double t_max;
 	double dtc;
 	
 	if (id == 0) {
-		readargs(argv, readdir, savedir, n_trajs, ntc, dtc);
+		readargs(argv, readdir, savedir, n_trajs, t_max, dtc);
 		std::cout << "data will be read from: " << readdir << std::endl;
 		std::cout << "data will be save to: " << savedir << std::endl;
 		std::cout << "number of trajectories = " << n_trajs << std::endl;
-		std::cout << "number of classical time steps = " << ntc << std::endl;
+		std::cout << "maximun time = " << t_max << std::endl;
 		std::cout << "classical time step size = " << dtc << std::endl;
 	}
-	bcast(readdir, n_trajs, ntc, dtc); // TBD! may not work for string
+	bcast(readdir, n_trajs, t_max, dtc); // TBD! may not work for string
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -72,6 +70,14 @@ int main(int, char**argv) {
 	double omega = 0.0002;
 	double mass = 2000;
 	double x0_mpt = 0;
+
+	uword ntc = t_max / dtc;
+	vec time_grid;
+	if (id == 0) {
+		time_grid = linspace(0, t_max, ntc);
+		dtc = time_grid(1) - time_grid(0);
+	}
+	bcast(dtc);
 
 #ifdef DEBUG_MODE
 	double fric_gamma = 0;
@@ -145,7 +151,8 @@ int main(int, char**argv) {
 				state_t, "state.dat",
 				x_t, "x.dat",
 				v_t, "v.dat",
-				E_t, "E.dat"
+				E_t, "E.dat",
+				time_grid, "t.dat"
 		);
 		sw.report();
 	}
