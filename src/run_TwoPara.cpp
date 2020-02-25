@@ -103,15 +103,25 @@ int main(int, char** argv) {
 	for (int i = 0; i != nx_local; ++i) {
 		double x = xgrid(idx_start+i);
 		model.set_and_calc_cis_sub(x);
+		if (id == 0)
+			sw.report("set_and_calc_cis_sub");
 		model.calc_val_cis_bath();
+		if (id == 0)
+			sw.report("calc_val_cis_bath");
 		model.calc_Gamma(1);
+		if (id == 0)
+			sw.report("calc_Gamma");
 
 		E0_local(i) = model.ev_H + E_mpt(x);
 		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
 		F0_local(i) = model.force(0);
 		F1_local(i) = model.force(1);
+		if (id == 0)
+			sw.report("force");
 		//dc01_local(i) = model.dc(2, "exact")(0,1);
 		dc01x_local(i) = model.dc(2, "approx")(0,1);
+		if (id == 0)
+			sw.report("dc");
 		Gamma_local(i) = model.Gamma(0);
 		n_imp_local(i) = model.ev_n;
 
