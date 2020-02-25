@@ -92,7 +92,7 @@ int main(int, char** argv) {
 	if (id == 0) {
 		set_size( nx, E0, E1, F0, F1, dc01, dc01x, Gamma, n_imp );
 		std::cout << "number of x grid points: " << nx << std::endl;
-		sw.run();
+		sw.run(0);
 	}
 
 
@@ -102,26 +102,43 @@ int main(int, char** argv) {
 	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
 	for (int i = 0; i != nx_local; ++i) {
 		double x = xgrid(idx_start+i);
+		if (id == 0) {
+			sw.run(1);
+		}
 		model.set_and_calc_cis_sub(x);
-		if (id == 0)
-			sw.report("set_and_calc_cis_sub");
+		if (id == 0) {
+			sw.pause(1);
+			sw.report(1, "set_and_calc_cis_sub cumulative");
+			sw.run(2);
+		}
 		model.calc_val_cis_bath();
-		if (id == 0)
-			sw.report("calc_val_cis_bath");
+		if (id == 0) {
+			sw.pause(2);
+			sw.report(2, "calc_val_cis_bath cumulative");
+			sw.run(3);
+		}
 		model.calc_Gamma(1);
-		if (id == 0)
-			sw.report("calc_Gamma");
+		if (id == 0) {
+			sw.pause(3);
+			sw.report(3, "calc_Gamma cumulative");
+			sw.run(4);
+		}
 
 		E0_local(i) = model.ev_H + E_mpt(x);
 		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
 		F0_local(i) = model.force(0);
 		F1_local(i) = model.force(1);
-		if (id == 0)
-			sw.report("force");
+		if (id == 0) {
+			sw.pause(4);
+			sw.report(4, "force cumulative");
+			sw.run(5);
+		}
 		//dc01_local(i) = model.dc(2, "exact")(0,1);
 		dc01x_local(i) = model.dc(2, "approx")(0,1);
-		if (id == 0)
-			sw.report("dc");
+		if (id == 0) {
+			sw.pause(5);
+			sw.report(5, "dc cumulative");
+		}
 		Gamma_local(i) = model.Gamma(0);
 		n_imp_local(i) = model.ev_n;
 
@@ -145,7 +162,7 @@ int main(int, char** argv) {
 				Gamma, "Gamma.dat",
 				n_imp, "n_imp.dat"
 		);
-		sw.report();
+		sw.report("total program");
 		std::cout << "end of program" << std::endl;
 		std::cout << std::endl << std::endl << std::endl;
 	}
