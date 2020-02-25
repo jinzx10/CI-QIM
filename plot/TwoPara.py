@@ -4,7 +4,7 @@ import os
 
 #rootdir = '/home/zuxin/job/CI-QIM/'
 filedir=os.path.dirname(os.path.abspath(__file__))
-datadir=rootdir+'/../data/TwoPara/Gamma/0.0016/'
+datadir=filedir+'/../data/TwoPara/Gamma/0.0016/'
 
 num_figs = 5 
 
