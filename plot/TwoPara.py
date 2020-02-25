@@ -7,6 +7,8 @@ filedir=os.path.dirname(os.path.abspath(__file__))
 datadir=filedir+'/../data/TwoPara/Gamma/0.0016/'
 
 num_figs = 5 
+switch_dc_exact = False
+
 
 xgrid = np.fromfile(datadir+'xgrid.dat')
 E0 = np.fromfile(datadir+'E0.dat')
@@ -16,7 +18,9 @@ F1 = np.fromfile(datadir+'F1.dat')
 Gamma = np.fromfile(datadir+'Gamma.dat')
 n_imp = np.fromfile(datadir+'n_imp.dat')
 dc01x = np.fromfile(datadir+'dc01x.dat')
-dc01 = np.fromfile(datadir+'dc01.dat')
+
+if switch_dc_exact:
+    dc01 = np.fromfile(datadir+'dc01.dat')
 
 #xfine = np.fromfile('./x_fine.dat')
 #E0_fine = np.fromfile('./E0_fine.dat')
@@ -51,8 +55,10 @@ plt.plot(xgrid[1:], f_dx_1)
 
 plt.subplot(1, num_figs, 5)
 plt.plot(xgrid, np.abs(dc01x))
-plt.plot(xgrid, np.abs(dc01), linestyle=':')
-print(np.linalg.norm(np.abs(dc01x) - np.abs(dc01) ))
+
+if switch_dc_exact:
+    plt.plot(xgrid, np.abs(dc01), linestyle=':')
+    print(np.linalg.norm(np.abs(dc01x) - np.abs(dc01) ))
 #plt.plot(xfine, dc01_fine, linestyle='dotted')
 
 plt.show()
