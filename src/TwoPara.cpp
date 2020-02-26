@@ -118,7 +118,7 @@ void TwoPara::calc_Gamma(uword const& sz) {
 	sw.report("calc_Gamma: V_adi");
 	mat delta = gauss( val_cis_sub.head(sz), val_cis_bath.as_row(),
 			5.0*dE_bath_avg );
-	std::cout << "bath number of states: " << val_cis.bath.n_elems << std::endl;
+	std::cout << "bath number of states: " << val_cis_bath.n_elems << std::endl;
 	sw.report("calc_Gamma: delta");
 	Gamma = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
 	sw.report("calc_Gamma: Gamma");
