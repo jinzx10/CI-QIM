@@ -84,7 +84,7 @@ cx_mat FSSH::L_rho(cx_mat const& rho_) {
 
 cx_mat FSSH::drho_dt(cx_mat const& rho_) {
 	std::complex<double> I{0.0, 1.0};
-	return -I * rho_ % bcast_op(E_adi, E_adi.t(), std::minus<>()) 
+	return -I * rho_ % bcast_minus(E_adi, E_adi.t())
 		- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
