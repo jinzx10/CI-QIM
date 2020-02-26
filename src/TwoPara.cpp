@@ -108,20 +108,14 @@ void TwoPara::calc_Gamma() {
 }
 
 void TwoPara::calc_Gamma(uword const& sz) {
-	Stopwatch sw;
-	sw.run("calc_Gamma: start");
 	mat V_adi = vec_cis_sub.head_cols(sz).t() * join<sp_mat>( {
 			{ sp_mat( 1, (n_occ-1)*(n_vir-1) ) },
 			{ -kron( speye(n_vir-1, n_vir-1), sp_mat(H_do_o) ) },
 			{ kron( sp_mat(H_dv_v), speye(n_occ-1, n_occ-1) ) }
 	});
-	sw.report("calc_Gamma: V_adi");
 	mat delta = gauss( val_cis_sub.head(sz), val_cis_bath.as_row(),
 			5.0*dE_bath_avg );
-	std::cout << "bath number of states: " << val_cis_bath.n_elem << std::endl;
-	sw.report("calc_Gamma: delta");
 	Gamma = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
-	sw.report("calc_Gamma: Gamma");
 }
 
 double TwoPara::E_rel(uword const& state_) {
