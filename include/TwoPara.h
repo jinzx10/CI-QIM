@@ -66,24 +66,21 @@ struct TwoPara
 	arma::mat 			vec_cis_sub;
 
 	void				calc_val_cis_bath();
-	void				calc_Gamma();
-	void				calc_Gamma(arma::uword const& sz_);
 	arma::vec			val_cis_bath;
+
+	void				calc_Gamma(arma::uword const& sz_);
 	arma::vec 			Gamma;
+
+	void				calc_force();
+	arma::vec			force;
+
+	void				calc_dc(arma::uword const& sz_, std::string const& = "approx");
+	arma::mat			dc;
 
 	double				E_rel(arma::uword const& state_);
 	arma::vec			E_rel();
 
-	void				calc_force();
-	void				calc_dc(arma::uword const& sz_, std::string const& = "approx");
-
-	//double				force(arma::uword const& state_);
-	//arma::vec			force();
-	//arma::mat			dc(arma::uword const& sz_, std::string const& = "approx");
-	arma::vec			force;
-	arma::mat			dc;
-
-	// data in the last position, used to calculate force and dc
+	// data for the last position, used to calculate force and dc
 	void				move_new_to_old();
 	double				_x;
 	arma::vec			_val_cis_sub;
