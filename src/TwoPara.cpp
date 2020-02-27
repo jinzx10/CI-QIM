@@ -37,9 +37,21 @@ void TwoPara::set_and_calc(double const& x_) {
 
 void TwoPara::set_and_calc_cis_sub(double const& x_) {
 	x = x_;
+	Stopwatch sw;
+	sw.run();
 	solve_orb();
+	sw.report("solve_orb");
+	sw.reset();
+	
+	sw.run();
 	rotate_orb();
+	sw.report("rotate_orb");
+	sw.reset();
+
+	sw.run();
 	solve_cis_sub();
+	sw.report("solve_cis_sub");
+	sw.reset();
 }
 
 void TwoPara::solve_orb() {
