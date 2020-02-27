@@ -102,6 +102,8 @@ int main(int, char** argv) {
 	double x_init = xgrid(idx_start) - 1e-3;
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, x_init);
 
+	std::cout << "ready" << std::endl;
+
 	for (int i = 0; i != nx_local; ++i) {
 		if (id == 0)
 			sw.run(1);

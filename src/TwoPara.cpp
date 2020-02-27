@@ -45,7 +45,7 @@ void TwoPara::set_and_calc(double const& x_) {
 	rotate_orb();
 	solve_cis_sub();
 	calc_val_cis_bath();
-	calc_Gamma();
+	calc_Gamma(1);
 	calc_force();
 	calc_dc(2, "approx");
 }
@@ -135,6 +135,7 @@ vec TwoPara::E_rel() {
 }
 
 void TwoPara::calc_force() {
+	force.set_size(sz_rel);
 	force(0) = - dE_imp(x) * ev_n - dE_mpt(x);
 	force.tail(sz_rel-1) = - (val_cis_sub - _val_cis_sub) / (x - _x) - dE_mpt(x);
 }
