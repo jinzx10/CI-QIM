@@ -35,7 +35,8 @@ int main(int, char** argv) {
 		std::cout << "number of bath states: " << n_bath << std::endl;
 		std::cout << "hybridization Gamma: " << hybrid << std::endl;
 		std::cout << "xgrid density: " << "base = " << dos_base 
-			<< "   peak = " << dos_peak << "   width = " << dos_width << std::endl;
+			<< "   peak = " << dos_peak << "   width = " << dos_width 
+			<< std::endl;
 	}
 	bcast(n_bath, hybrid, dos_base, dos_peak, dos_width);
 
@@ -95,54 +96,34 @@ int main(int, char** argv) {
 		sw.run(0);
 	}
 
+	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
 
 	// Two parabola model
-	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ);
+	double x_init = xgrid(idx_start) - 1e-3;
+	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, x_init);
 
-	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
 	for (int i = 0; i != nx_local; ++i) {
-		double x = xgrid(idx_start+i);
-		if (id == 0) {
+		if (id == 0)
 			sw.run(1);
-		}
-		model.set_and_calc_cis_sub(x);
-		if (id == 0) {
-			sw.pause(1);
-			sw.report(1, "set_and_calc_cis_sub cumulative");
-			sw.run(2);
-		}
-		model.calc_val_cis_bath();
-		if (id == 0) {
-			sw.pause(2);
-			sw.report(2, "calc_val_cis_bath cumulative");
-			sw.run(3);
-		}
-		model.calc_Gamma(1);
-		if (id == 0) {
-			sw.pause(3);
-			sw.report(3, "calc_Gamma cumulative");
-			sw.run(4);
-		}
 
+		double x = xgrid(idx_start+i);
+		model.set_and_calc(x);
+		
 		E0_local(i) = model.ev_H + E_mpt(x);
 		E1_local(i) = model.val_cis_sub(0) + E_mpt(x);
 		F0_local(i) = model.force(0);
 		F1_local(i) = model.force(1);
-		if (id == 0) {
-			sw.pause(4);
-			sw.report(4, "force cumulative");
-			sw.run(5);
-		}
-		//dc01_local(i) = model.dc(2, "exact")(0,1);
-		dc01x_local(i) = model.dc(2, "approx")(0,1);
-		if (id == 0) {
-			sw.pause(5);
-			sw.report(5, "dc cumulative");
-		}
+		dc01x_local(i) = model.dc(0,1);
 		Gamma_local(i) = model.Gamma(0);
 		n_imp_local(i) = model.ev_n;
 
-		std::cout << idx_start+i+1 << "/" << nx << " finished" << std::endl;
+		if (id == 0)
+			sw.report(1);
+
+		std::cout << "proc id = " << id 
+			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
+			<< "   total task: " << idx_start+i+1 << "/" << nx << " finished" 
+			<< std::endl;
 	}
 
 	gatherv( E0_local, E0, E1_local, E1, F0_local, F0, F1_local, F1,

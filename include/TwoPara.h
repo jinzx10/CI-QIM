@@ -9,11 +9,14 @@ struct TwoPara
 {
 	using d2d = std::function<double(double)>;
 
-	TwoPara(	d2d						E_mpt_,
-				d2d						E_fil_,
-				arma::vec const&		bath_,
-				arma::vec const&		cpl_,
-				arma::uword const&		n_occ_		);
+	TwoPara(	
+			d2d						E_mpt_,
+			d2d						E_fil_,
+			arma::vec const&		bath_,
+			arma::vec const&		cpl_,
+			arma::uword const&		n_occ_,
+			double const&			x_init_
+	);
 
 	d2d					E_mpt;
 	d2d					E_fil;
@@ -34,7 +37,7 @@ struct TwoPara
 	arma::span 			span_vir;
 
 	void				set_and_calc(double const& x);
-	void				set_and_calc_cis_sub(double const& x);
+	//void				set_and_calc_cis_sub(double const& x);
 	double				x;
 
 	void				solve_orb();
@@ -70,9 +73,25 @@ struct TwoPara
 
 	double				E_rel(arma::uword const& state_);
 	arma::vec			E_rel();
-	double				force(arma::uword const& state_);
-	arma::vec			force();
-	arma::mat			dc(arma::uword const& sz_, std::string const& = "approx");
+
+	void				calc_force();
+	void				calc_dc(arma::uword const& sz_, std::string const& = "approx");
+
+	//double				force(arma::uword const& state_);
+	//arma::vec			force();
+	//arma::mat			dc(arma::uword const& sz_, std::string const& = "approx");
+	arma::vec			force;
+	arma::mat			dc;
+
+	// data in the last position, used to calculate force and dc
+	void				move_new_to_old();
+	double				_x;
+	arma::vec			_val_cis_sub;
+	arma::mat 			_vec_cis_sub;
+	arma::vec			_vec_do;
+	arma::vec			_vec_dv;
+	arma::mat			_vec_o;
+	arma::mat			_vec_v;
 };
 
 

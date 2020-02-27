@@ -5,12 +5,16 @@
 
 using namespace arma;
 
-TwoPara::TwoPara(	d2d				E_mpt_,
-					d2d				E_fil_,
-					vec const&		bath_,
-					vec const&		cpl_,
-					uword const&	n_occ_		):
-	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), n_occ(n_occ_)
+TwoPara::TwoPara(
+		d2d				E_mpt_,
+		d2d				E_fil_,
+		vec const&		bath_,
+		vec const&		cpl_,
+		uword const&	n_occ_,
+		double const&	x_init_		
+):
+	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), 
+	n_occ(n_occ_), x(x_init_)
 {
 	E_imp = [this] (double const& x_) { return E_fil(x_) - E_mpt(x_); };
 	dE_mpt = grad(E_mpt);
@@ -27,31 +31,23 @@ TwoPara::TwoPara(	d2d				E_mpt_,
 	H = diagmat(join_cols(vec{0}, bath));
 	H(span(1, n_bath), 0) = cpl;
 	H(0, span(1, n_bath)) = cpl.t();
+
+	// initialize data
+	solve_orb();
+	rotate_orb();
+	solve_cis_sub();
 }
 
 void TwoPara::set_and_calc(double const& x_) {
-	set_and_calc_cis_sub(x_);
+	move_new_to_old();
+	x = x_;
+	solve_orb();
+	rotate_orb();
+	solve_cis_sub();
 	calc_val_cis_bath();
 	calc_Gamma();
-}
-
-void TwoPara::set_and_calc_cis_sub(double const& x_) {
-	x = x_;
-	Stopwatch sw;
-	sw.run();
-	solve_orb();
-	sw.report("solve_orb");
-	sw.reset();
-	
-	sw.run();
-	rotate_orb();
-	sw.report("rotate_orb");
-	sw.reset();
-
-	sw.run();
-	solve_cis_sub();
-	sw.report("solve_cis_sub");
-	sw.reset();
+	calc_force();
+	calc_dc(2, "approx");
 }
 
 void TwoPara::solve_orb() {
@@ -138,46 +134,35 @@ vec TwoPara::E_rel() {
 	return join_cols( vec{ev_H}, val_cis_sub );
 }
 
-double TwoPara::force(uword const& state_) {
-	if (state_ == 0)
-		return - dE_imp(x) * ev_n - dE_mpt(x);
-
-	double dx = 1e-4;
-	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x+dx);
-	return - ( model_.val_cis_sub(state_-1) - val_cis_sub(state_-1) ) / dx 
-		- dE_mpt(x);
+void TwoPara::calc_force() {
+	force(0) = - dE_imp(x) * ev_n - dE_mpt(x);
+	force.tail(sz_rel-1) = - (val_cis_sub - _val_cis_sub) / (x - _x) - dE_mpt(x);
 }
 
-vec TwoPara::force() {
-	double dx = 1e-4;
-	vec f = zeros(sz_rel);
-	f(0) = force(0);
+void TwoPara::calc_dc(uword const& sz, std::string const& method) {
+	mat _coef = join_d<double>(vec{1.0}, _vec_cis_sub.head_cols(sz-1));
+	mat coef = join_d<double>(vec{1.0}, vec_cis_sub.head_cols(sz-1));
 
-	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x+dx);
-	f.tail(sz_rel-1) = - ( model_.val_cis_sub - val_cis_sub ) / dx - dE_mpt(x);
-	
-	return f;
-}
+	adj_phase(_coef, coef);
 
-mat TwoPara::dc(uword const& sz, std::string const& method) {
-	double dx = 1e-4;
-	mat coef_ = join_d<double>(vec{1.0}, vec_cis_sub.head_cols(sz-1));
-
-	TwoPara model_(E_mpt, E_fil, bath, cpl, n_occ);
-	model_.set_and_calc_cis_sub(x+dx);
-	mat coef = join_d<double>(vec{1}, model_.vec_cis_sub.head_cols(sz-1));
-
-	adj_phase(coef_, coef);
-
-	mat overlap = coef_.t() * ovl(vec_do, vec_o, vec_dv, vec_v, model_.vec_do, model_.vec_o, model_.vec_dv, model_.vec_v, method) * coef;
+	mat overlap = _coef.t() * ovl(_vec_do, _vec_o, _vec_dv, _vec_v, 
+			vec_do, vec_o, vec_dv, vec_v, method) * coef;
 
 	// Lowdin-orthoginalization
 	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
 
 	// derivative coupling matrix
-	return real( logmat(overlap) ) / dx;
+	dc = real( logmat(overlap) ) / (x - _x);
+}
+
+void TwoPara::move_new_to_old() {
+	_x = x;
+	_val_cis_sub = std::move(val_cis_sub);
+	_vec_cis_sub = std::move(vec_cis_sub);
+	_vec_do = std::move(vec_do);
+	_vec_dv = std::move(vec_dv);
+	_vec_o = std::move(vec_o);
+	_vec_v = std::move(vec_v);
 }
 
 
