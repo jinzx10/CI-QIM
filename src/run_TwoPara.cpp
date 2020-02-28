@@ -25,20 +25,20 @@ int main(int, char** argv) {
 	std::string datadir;
 	uword n_bath = 0;
 	double hybrid = 0.0;
-	double dos_base = 0.0;
-	double dos_peak = 0.0;
-	double dos_width = 0.0;
+	double dox_base = 0.0;
+	double dox_peak = 0.0;
+	double dox_width = 0.0;
 
 	if (id == 0) {
-		readargs(argv, datadir, n_bath, hybrid, dos_base, dos_peak, dos_width);
+		readargs(argv, datadir, n_bath, hybrid, dox_base, dox_peak, dox_width);
 		std::cout << "data will be saved to: " << datadir << std::endl;
 		std::cout << "number of bath states: " << n_bath << std::endl;
 		std::cout << "hybridization Gamma: " << hybrid << std::endl;
-		std::cout << "xgrid density: " << "base = " << dos_base 
-			<< "   peak = " << dos_peak << "   width = " << dos_width 
+		std::cout << "xgrid density: " << "base = " << dox_base 
+			<< "   peak = " << dox_peak << "   width = " << dox_width 
 			<< std::endl;
 	}
-	bcast(n_bath, hybrid, dos_base, dos_peak, dos_width);
+	bcast(n_bath, hybrid, dox_base, dox_peak, dox_width);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -69,8 +69,8 @@ int main(int, char** argv) {
 
 	// unevenly-spaced x grid; more samplings around the crossing point
 	auto density = [&] (double x) { 
-		return dos_base + 
-			dos_peak * exp( -(x-xc)*(x-xc) / 2.0 / dos_width / dos_width );
+		return dox_base + 
+			dox_peak * exp( -(x-xc)*(x-xc) / 2.0 / dox_width / dox_width );
 	};
 	vec xgrid = grid(-20, 40, density);
 	uword nx = xgrid.n_elem;
