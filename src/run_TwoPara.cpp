@@ -100,14 +100,9 @@ int main(int, char** argv) {
 
 	// Two parabola model
 	double x_init = xgrid(idx_start) - 1e-3;
-	std::cout << "ready to initialize" << std::endl;
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, x_init);
-	std::cout << "initialized" << std::endl;
 
 	for (int i = 0; i != nx_local; ++i) {
-		if (id == 0)
-			sw.run(1);
-
 		double x = xgrid(idx_start+i);
 		model.set_and_calc(x);
 		
@@ -120,11 +115,10 @@ int main(int, char** argv) {
 		n_imp_local(i) = model.ev_n;
 
 		if (id == 0)
-			sw.report(1);
+			sw.report(0);
 
 		std::cout << "proc id = " << id 
 			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
-			<< "   total task: " << idx_start+i+1 << "/" << nx << " finished" 
 			<< std::endl;
 	}
 

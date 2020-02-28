@@ -16,7 +16,6 @@ TwoPara::TwoPara(
 	E_mpt(E_mpt_), E_fil(E_fil_), bath(bath_), cpl(cpl_), 
 	n_occ(n_occ_), x(x_init_)
 {
-	std::cout << "start initialization" << std::endl;
 	E_imp = [this] (double const& x_) { return E_fil(x_) - E_mpt(x_); };
 	dE_mpt = grad(E_mpt);
 	dE_imp = grad(E_imp);
@@ -35,31 +34,20 @@ TwoPara::TwoPara(
 
 	// initialize data
 	solve_orb();
-	std::cout << "init: solve_orb done" << std::endl;
 	rotate_orb();
-	std::cout << "init: rotate_orb done" << std::endl;
 	solve_cis_sub();
-	std::cout << "init: solve_cis_sub done" << std::endl;
 }
 
 void TwoPara::set_and_calc(double const& x_) {
-	std::cout << "start set_and_calc" << std::endl;
 	move_new_to_old();
 	x = x_;
 	solve_orb();
-	std::cout << "set_and_calc: solve_orb done" << std::endl;
 	rotate_orb();
-	std::cout << "set_and_calc: rotate_orb done" << std::endl;
 	solve_cis_sub();
-	std::cout << "set_and_calc: solve_cis_sub done" << std::endl;
 	calc_val_cis_bath();
-	std::cout << "set_and_calc: calc_val_cis_bath done" << std::endl;
 	calc_Gamma(1);
-	std::cout << "set_and_calc: calc_Gamma done" << std::endl;
 	calc_force();
-	std::cout << "set_and_calc: calc_force done" << std::endl;
 	calc_dc(2, "approx");
-	std::cout << "set_and_calc: calc_dc done" << std::endl;
 }
 
 void TwoPara::solve_orb() {

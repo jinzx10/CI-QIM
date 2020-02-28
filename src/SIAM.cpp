@@ -14,11 +14,12 @@ SIAM::SIAM(
 	h = diagmat(join_cols(vec{0}, bath));
 	h(0, span(1, n_bath)) = cpl.t();
 	h(span(1, n_bath), 0) = cpl;
-	n_imp_mf = 0;
+	n_mf = 0;
 }
 
-void SIAM::set_Ed(double const& Ed) {
+void SIAM::set_and_calc(double const& Ed) {
 	h(0,0) = Ed;
+	solve_mf();
 }
 
 mat SIAM::F(double const& n) {
@@ -37,9 +38,9 @@ double SIAM::n2n(double const& n) {
 
 void SIAM::solve_mf() {
 	auto dn = [this] (double const& n) { return n2n(n) - n; };
-	newtonroot(dn, n_imp_mf);
-	eig_sym(val_mf, vec_mf, F(n_imp_mf));
-	E_mf = accu(val_mf.head(n_occ)) - U * n_imp_mf * n_imp_mf;
+	newtonroot(dn, n_mf);
+	eig_sym(val_mf, vec_mf, F(n_mf));
+	E_mf = accu(val_mf.head(n_occ)) - U * n_mf * n_mf;
 }
 
 

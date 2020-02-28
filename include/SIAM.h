@@ -12,10 +12,10 @@ struct SIAM
 			arma::uword const& n_occ_
 	);
 
-	void set_Ed(double const& Ed);
+	void set_and_calc(double const& Ed);
 	void solve_mf();
 
-	double n_imp_mf;
+	double n_mf;
 	double E_mf;
 
 
