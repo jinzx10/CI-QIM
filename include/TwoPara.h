@@ -37,7 +37,6 @@ struct TwoPara
 	arma::span 			span_vir;
 
 	void				set_and_calc(double const& x);
-	//void				set_and_calc_cis_sub(double const& x);
 	double				x;
 
 	void				solve_orb();

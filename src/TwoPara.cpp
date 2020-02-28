@@ -79,8 +79,9 @@ void TwoPara::subrotate(mat const& vec_sub, double& val_d, vec& vec_d, mat& vec_
 	vec val_other;
 	eig_sym( val_other, q, vec_other.t() * H * vec_other);
 	vec_other *= q;
-	H_other.zeros(sz-1, sz-1);
-	H_other.diag() = val_other;
+	H_other = diagmat(val_other);
+	//H_other.zeros(sz-1, sz-1);
+	//H_other.diag() = val_other;
 	H_d_other= vec_d.t() * H * vec_other;
 }
 

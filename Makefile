@@ -23,8 +23,10 @@ FSSH_deps_h 			= arma_helper math_helper
 Langevin_deps 			= TwoPara2
 Langevin_deps_h 		= arma_helper math_helper
 
+SIAM_deps 				=
+SIAM_deps_h 			= arma_helper math_helper 
 
-executables	 	= $(addprefix ${BDIR}/run_, TwoPara TwoPara2 FSSH Langevin)
+executables	 	= $(addprefix ${BDIR}/run_, TwoPara TwoPara2 FSSH Langevin SIAM)
 obj_run 		= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${executables})
 gen_obj 		= $(patsubst %, ${ODIR}/%.o, $(1))
 gen_hdr 		= $(patsubst %, ${IDIR}/%.h, $(1))
