@@ -41,6 +41,8 @@ struct SIAM
 	arma::mat 			H_dv_v;
 
 	void				solve_cisnd();
+	arma::mat			H_cisnd();
+	arma::mat			n_cisnd();
 	arma::vec			val_cisnd;
 	arma::mat 			vec_cisnd;
 
@@ -93,6 +95,8 @@ struct SIAM
 	arma::mat			Fv();
 	arma::mat			Fdvb();
 	arma::mat			Fjdo();
+	arma::mat			Io();
+	arma::mat			Iv();
 
 	arma::mat			H_gnd_gnd();
 	arma::mat			H_gnd_dodv();
