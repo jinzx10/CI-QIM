@@ -42,7 +42,9 @@ struct SIAM
 
 	void				solve_cisnd();
 	arma::mat			H_cisnd();
-	arma::mat			n_cisnd();
+	arma::mat			N_cisnd();
+	arma::vec			E_cisnd;
+	arma::vec			n_cisnd;
 	arma::vec			val_cisnd;
 	arma::mat 			vec_cisnd;
 
@@ -50,7 +52,8 @@ struct SIAM
 
 	void 				calc_Gamma();
 
-	void 				calc_dc();
+	void 				calc_dc(arma::uword const& sz_ = 2);
+	arma::mat			dc;
 
 	d2d					Ed;
 	d2d 				E_nuc;
@@ -71,8 +74,8 @@ struct SIAM
 	// data for the last position, used to calculate force and dc
 	void				move_new_to_old();
 	double				_x;
-	arma::vec			_val_cis_sub;
-	arma::mat 			_vec_cis_sub;
+	arma::vec			_val_cisnd;
+	arma::mat 			_vec_cisnd;
 	arma::vec			_vec_do;
 	arma::vec			_vec_dv;
 	arma::mat			_vec_o;
@@ -133,41 +136,45 @@ struct SIAM
 
 	arma::mat			H_oviv_ovjv();
 
-	arma::mat			n_gnd_gnd();
-	arma::mat			n_gnd_dodv();
-	arma::mat			n_gnd_dob();
-	arma::mat			n_gnd_jdv();
-	arma::mat			n_gnd_ovov();
-	arma::mat			n_gnd_ovob();
-	arma::mat			n_gnd_ovjv();
+	arma::mat			N_gnd_gnd();
+	arma::mat			N_gnd_dodv();
+	arma::mat			N_gnd_dob();
+	arma::mat			N_gnd_jdv();
+	arma::mat			N_gnd_ovov();
+	arma::mat			N_gnd_ovob();
+	arma::mat			N_gnd_ovjv();
 
-	arma::mat			n_dodv_dodv();
-	arma::mat			n_dodv_dob();
-	arma::mat			n_dodv_jdv();
-	arma::mat			n_dodv_ovov();
-	arma::mat			n_dodv_ovob();
-	arma::mat			n_dodv_ovjv();
+	arma::mat			N_dodv_dodv();
+	arma::mat			N_dodv_dob();
+	arma::mat			N_dodv_jdv();
+	arma::mat			N_dodv_ovov();
+	arma::mat			N_dodv_ovob();
+	arma::mat			N_dodv_ovjv();
 
-	arma::mat			n_doa_dob();
-	arma::mat			n_doa_jdv();
-	arma::mat			n_doa_ovov();
-	arma::mat			n_doa_ovob();
-	arma::mat			n_doa_ovjv();
+	arma::mat			N_doa_dob();
+	arma::mat			N_doa_jdv();
+	arma::mat			N_doa_ovov();
+	arma::mat			N_doa_ovob();
+	arma::mat			N_doa_ovjv();
 
-	arma::mat			n_idv_jdv();
-	arma::mat			n_idv_ovov();
-	arma::mat			n_idv_ovob();
-	arma::mat			n_idv_ovjv();
+	arma::mat			N_idv_jdv();
+	arma::mat			N_idv_ovov();
+	arma::mat			N_idv_ovob();
+	arma::mat			N_idv_ovjv();
 
-	arma::mat			n_ovov_ovov();
-	arma::mat			n_ovov_ovob();
-	arma::mat			n_ovov_ovjv();
+	arma::mat			N_ovov_ovov();
+	arma::mat			N_ovov_ovob();
+	arma::mat			N_ovov_ovjv();
 
-	arma::mat			n_ovoa_ovob();
-	arma::mat			n_ovoa_ovjv();
+	arma::mat			N_ovoa_ovob();
+	arma::mat			N_ovoa_ovjv();
 
-	arma::mat			n_oviv_ovjv();
+	arma::mat			N_oviv_ovjv();
 };
 
+
+void adj_phase(arma::mat const& vecs_old, arma::mat& vecs_new);
+
+arma::mat ovl(arma::vec const& vec_do_, arma::mat const& vec_occ_, arma::vec const& vec_dv_, arma::mat const& vec_vir_, arma::vec const& vec_do, arma::mat const& vec_occ, arma::vec const& vec_dv, arma::mat const& vec_vir);
 
 #endif
