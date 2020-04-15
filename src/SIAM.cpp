@@ -5,16 +5,17 @@
 using namespace arma;
 
 SIAM::SIAM(
-		d2d Ed_,
-		d2d E_nuc_,
-		vec const& bath_,
-		vec const& cpl_,
-		double const& U_,
-		uword const& n_occ_
+		d2d						E_imp_,
+		d2d 					E_nuc_,
+		vec			const&		bath_,
+		vec 		const& 		cpl_,
+		double		const&		U_,
+		uword		const& 		n_occ_,
+		uword		const&		sz_sub_
 ): 
-	Ed(Ed_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
+	sz_sub(sz_sub_), E_imp(E_imp_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
 	n_bath(bath.n_elem), n_occ(n_occ_), n_vir(n_bath+1-n_occ),
-	span_occ(span(0, n_occ-1)), span_vir(span(n_occ, n_bath))
+	span_occ(span(0, n_occ-1)), span_vir(span(n_occ, n_bath)), span_sub(span(0, sz_sub-1))
 {
 	h = diagmat(join_cols(vec{0}, bath));
 	h(0, span(1, n_bath)) = cpl.t();
@@ -27,7 +28,7 @@ SIAM::SIAM(
 
 void SIAM::set_and_calc(double const& x_) {
 	move_new_to_old();
-	h(0,0) = Ed(x_);
+	h(0,0) = E_imp(x_);
 	solve_mf();
 }
 
@@ -46,14 +47,14 @@ sp_mat SIAM::F() {
 double SIAM::n2n(double const& n) {
 	mat eigvec;
 	vec eigval;
-	eig_sym(eigval, eigvec, conv_to<mat>::from(F(n)));
+	eig_sym( eigval, eigvec, conv_to<mat>::from(F(n)) );
 	return accu(square(eigvec(0, span(0, n_occ-1))));
 }
 
 void SIAM::solve_mf() {
 	auto dn = [this] (double const& n) { return n2n(n) - n; };
 	newtonroot(dn, n_mf);
-	eig_sym(val_mf, vec_mf, conv_to<mat>::from(F()));
+	eig_sym( val_mf, vec_mf, conv_to<mat>::from(F()) );
 	E_mf = accu(val_mf.head(n_occ)) - U * n_mf * n_mf;
 }
 
@@ -77,14 +78,15 @@ void SIAM::subrotate(mat const& vec_sub, double& val_d, vec& vec_d, mat& vec_oth
 
 	// second rotation: make H diagonal in the "other" subspace
 	vec val_other;
-	eig_sym( val_other, q, vec_other.t() * F() * vec_other);
+	eig_sym( val_other, q, vec_other.t() * F() * vec_other );
 	vec_other *= q;
 	H_other = diagmat(val_other);
 	H_d_other= vec_d.t() * F() * vec_other;
 }
 
 void SIAM::solve_cisnd() {
-	eig_sym(val_cisnd, vec_cisnd, H_cisnd());
+	eig_sym( val_cisnd, vec_cisnd, H_cisnd() );
+	coef = vec_cisnd.cols(span_sub);
 	n_cisnd = sum( vec_cisnd % (N_cisnd() * vec_cisnd) , 0).t();
 }
 
@@ -121,25 +123,33 @@ void SIAM::calc_Gamma() {
 
 }
 
-void SIAM::calc_dc(uword const& sz) {
-	mat _coef = join_d<double>(vec{1.0}, _vec_cisnd.head_cols(sz-1));
-	mat coef = join_d<double>(vec{1.0}, vec_cisnd.head_cols(sz-1));
+void SIAM::calc_dc_adi() {
+	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, vec_do, vec_o, vec_dv, vec_v);
+	zeyu_sign(_coef, coef, S);
 
-	adj_phase(_coef, coef);
-
-	mat overlap = _coef.t() * ovl(_vec_do, _vec_o, _vec_dv, _vec_v, 
-			vec_do, vec_o, vec_dv, vec_v) * coef;
+	mat overlap = _coef.t() * S * coef;
 
 	// Lowdin-orthoginalization
 	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
 
 	// derivative coupling matrix
-	dc = real( logmat(overlap) ) / (x - _x);
+	dc_adi = real( logmat(overlap) ) / (x - _x);
 }
 
 
 void SIAM::move_new_to_old() {
 	_x = x;
+	_vec_do = vec_do;
+	_vec_dv = vec_dv;
+	_vec_o = vec_o;
+	_vec_v = vec_v;
+	_val_cisnd = val_cisnd;
+	_coef = coef;
+
+}
+
+void zeyu_sign(mat const& vecs_old, mat& vecs_new, mat const& S) {
+	
 }
 
 void adj_phase(mat const& vecs_old, mat& vecs_new) {
@@ -149,11 +159,13 @@ void adj_phase(mat const& vecs_old, mat& vecs_new) {
 	}
 }
 
-mat ovl(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& vec_vir_, vec const& vec_do, mat const& vec_occ, vec const& vec_dv, mat const& vec_vir) {
+mat S_exact(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& vec_vir_, vec const& vec_do, mat const& vec_occ, vec const& vec_dv, mat const& vec_vir) {
 
 }
 
-// matrix elements
+///////////////////////////////////////////////////////////
+//		Below are all the boring matrix elements
+///////////////////////////////////////////////////////////
 mat SIAM::Pdodv() {
 	return mat{vec_do(0) * vec_dv(0)};
 }

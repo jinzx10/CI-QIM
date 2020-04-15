@@ -9,12 +9,13 @@ struct SIAM
 	using d2d = std::function<double(double)>;
 
 	SIAM(
-			d2d							Ed_,
+			d2d							E_imp_,
 			d2d							E_nuc_,
 			arma::vec		const&		bath_,
 			arma::vec 		const& 		cpl_,
 			double			const&		U_,
-			arma::uword 	const& 		n_occ_
+			arma::uword 	const& 		n_occ_,
+			arma::uword		const&		sz_sub_
 	);
 
 	void				set_and_calc(double const& x_);
@@ -28,6 +29,7 @@ struct SIAM
 
 	void				rotate_orb();
 	void				subrotate(arma::mat const& vec_sub, double& val_d, arma::vec& vec_d, arma::mat& vec_other, arma::sp_mat& H_other, arma::mat& H_d_other);
+
 	// o(v) stands for occupied (virtual) except do(dv)
 	double				val_do;
 	double 				val_dv;
@@ -35,11 +37,12 @@ struct SIAM
 	arma::vec			vec_dv;
 	arma::mat			vec_o;
 	arma::mat			vec_v;
-	arma::sp_mat		H_o; // diagonal 
-	arma::sp_mat 		H_v; // diagonal
-	arma::mat			H_do_o;
-	arma::mat 			H_dv_v;
+	arma::sp_mat		F_o; // diagonal 
+	arma::sp_mat 		F_v; // diagonal
+	arma::mat			F_do_o;
+	arma::mat 			F_dv_v;
 
+	// selective CIS-ND
 	void				solve_cisnd();
 	arma::mat			H_cisnd();
 	arma::mat			N_cisnd();
@@ -47,15 +50,27 @@ struct SIAM
 	arma::vec			n_cisnd;
 	arma::vec			val_cisnd;
 	arma::mat 			vec_cisnd;
+	arma::mat			coef;
 
 	void				calc_bath();
-
 	void 				calc_Gamma();
 
-	void 				calc_dc(arma::uword const& sz_ = 2);
-	arma::mat			dc;
+	// derivative coupling of a subspace of adiabats
+	arma::uword			sz_sub; // size of subspace adiabats for running dynamics
+	void 				calc_dc_adi();
+	arma::mat			dc_adi;
 
-	d2d					Ed;
+	// data for the last position, used to calculate force and dc
+	void				move_new_to_old();
+	double				_x;
+	arma::vec			_vec_do;
+	arma::vec			_vec_dv;
+	arma::mat			_vec_o;
+	arma::mat			_vec_v;
+	arma::vec			_val_cisnd;
+	arma::mat 			_coef; // part of vec_cisnd
+
+	d2d					E_imp;
 	d2d 				E_nuc;
 	arma::vec			bath;
 	arma::vec 			cpl;
@@ -66,20 +81,10 @@ struct SIAM
 	arma::uword 		n_vir;
 	arma::span			span_occ;
 	arma::span 			span_vir;
+	arma::span			span_sub;
 	arma::sp_mat		F(double const& n);
 	arma::sp_mat 		F();
 	double				n2n(double const& n);
-
-
-	// data for the last position, used to calculate force and dc
-	void				move_new_to_old();
-	double				_x;
-	arma::vec			_val_cisnd;
-	arma::mat 			_vec_cisnd;
-	arma::vec			_vec_do;
-	arma::vec			_vec_dv;
-	arma::mat			_vec_o;
-	arma::mat			_vec_v;
 
 	// matrix elements
 	arma::mat			Pdodv();
@@ -172,9 +177,10 @@ struct SIAM
 	arma::mat			N_oviv_ovjv();
 };
 
+void zeyu_sign(arma::mat const& vecs_old, arma::mat& vecs_new, arma::mat const& S = arma::mat{});
 
-void adj_phase(arma::mat const& vecs_old, arma::mat& vecs_new);
+arma::mat calc_dc(arma::mat const& _coef, arma::mat const& coef, double const& dx, arma::mat const& S = arma::mat{});
 
-arma::mat ovl(arma::vec const& vec_do_, arma::mat const& vec_occ_, arma::vec const& vec_dv_, arma::mat const& vec_vir_, arma::vec const& vec_do, arma::mat const& vec_occ, arma::vec const& vec_dv, arma::mat const& vec_vir);
+arma::mat S_exact(arma::vec const& vec_do_, arma::mat const& vec_occ_, arma::vec const& vec_dv_, arma::mat const& vec_vir_, arma::vec const& vec_do, arma::mat const& vec_occ, arma::vec const& vec_dv, arma::mat const& vec_vir);
 
 #endif
