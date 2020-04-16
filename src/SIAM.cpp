@@ -1,4 +1,3 @@
-
 #include "SIAM.h"
 #include "math_helper.h"
 #include "arma_helper.h"
