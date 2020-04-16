@@ -59,8 +59,8 @@ void SIAM::solve_mf() {
 }
 
 void SIAM::rotate_orb() {
-	subrotate(vec_mf.cols(span_occ), val_do, vec_do, vec_o, H_o, H_do_o);
-	subrotate(vec_mf.cols(span_vir), val_dv, vec_dv, vec_v, H_v, H_dv_v);
+	subrotate(vec_mf.cols(span_occ), val_do, vec_do, vec_o, F_o, F_do_o);
+	subrotate(vec_mf.cols(span_vir), val_dv, vec_dv, vec_v, F_v, F_dv_v);
 }
 
 void SIAM::subrotate(mat const& vec_sub, double& val_d, vec& vec_d, mat& vec_other, sp_mat& H_other, mat& H_d_other) {
@@ -126,14 +126,7 @@ void SIAM::calc_Gamma() {
 void SIAM::calc_dc_adi() {
 	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, vec_do, vec_o, vec_dv, vec_v);
 	zeyu_sign(_coef, coef, S);
-
-	mat overlap = _coef.t() * S * coef;
-
-	// Lowdin-orthoginalization
-	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
-
-	// derivative coupling matrix
-	dc_adi = real( logmat(overlap) ) / (x - _x);
+	dc_adi = calc_dc(_coef, coef, x-_x, S);
 }
 
 
@@ -145,11 +138,61 @@ void SIAM::move_new_to_old() {
 	_vec_v = vec_v;
 	_val_cisnd = val_cisnd;
 	_coef = coef;
-
 }
 
 void zeyu_sign(mat const& vecs_old, mat& vecs_new, mat const& S) {
-	
+	uword sz = vecs_old.n_cols;
+
+	// crude adjustment
+	for (uword i = 0; i != sz; ++i) {
+		if (arma::dot(vecs_old.col(i), vecs_new.col(i)) < 0) {
+			vecs_new.col(i) *= -1;
+		}
+	}
+
+	// Zeyu's algorithm
+	mat U;
+	if (!S.n_elem)
+		U = vecs_old.t() * vecs_new;
+	else
+		U = vecs_old.t() * S * vecs_new;
+
+	if (det(U) < 0) {
+		vecs_new.col(0) *= -1;
+		U.col(0) *= -1;
+	}
+
+	bool is_conv = false;
+	while (!is_conv) {
+		is_conv = true;
+		for (uword j = 0; j != sz-1; ++j) {
+			for (uword k = j+1; k != sz; ++k) {
+				double D = 3.0 * ( U(j,j)*U(j,j) + U(k,k)*U(k,k) ) + 
+					6.0 * U(j,k) * U(k,j) + 8.0 * ( U(j,j) + U(k,k) ) -
+					3.0 * ( dot(U.row(j), U.col(j)) + 
+							dot(U.row(k),U.col(k)) );
+				if (D < 0) {
+					vecs_new.cols(uvec{j,k}) *= -1;
+					U.cols(uvec{j,k}) *= -1;
+					is_conv = false;
+				}
+			}
+		}
+
+	}
+}
+
+mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
+	mat overlap;
+	if (!S.n_elem)
+		overlap = _coef.t() * coef;
+	else
+		overlap = _coef.t() * S * coef;
+
+	// Lowdin-orthoginalization
+	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
+
+	return real( logmat(overlap) ) / dx;
 }
 
 void adj_phase(mat const& vecs_old, mat& vecs_new) {
@@ -164,7 +207,7 @@ mat S_exact(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat con
 }
 
 ///////////////////////////////////////////////////////////
-//		Below are all the boring matrix elements
+//		below are all the boring matrix elements
 ///////////////////////////////////////////////////////////
 mat SIAM::Pdodv() {
 	return mat{vec_do(0) * vec_dv(0)};
