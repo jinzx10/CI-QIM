@@ -203,7 +203,7 @@ void adj_phase(mat const& vecs_old, mat& vecs_new) {
 }
 
 mat S_exact(vec const& vec_do_, mat const& vec_occ_, vec const& vec_dv_, mat const& vec_vir_, vec const& vec_do, mat const& vec_occ, vec const& vec_dv, mat const& vec_vir) {
-
+	
 }
 
 ///////////////////////////////////////////////////////////
