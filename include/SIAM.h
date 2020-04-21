@@ -15,32 +15,35 @@ struct SIAM
 			arma::vec 		const& 		cpl_,
 			double			const&		U_,
 			arma::uword 	const& 		n_occ_,
-			arma::uword		const&		sz_sub_
+			arma::uword		const&		sz_sub_,
+			double			const&		x_
 	);
 
 	void				set_and_calc(double const& x_);
 	double				x;
 
+	// mean-field
 	void				solve_mf();
 	double				n_mf;
 	double				E_mf;
 	arma::mat			vec_mf;
 	arma::vec 			val_mf;
 
+	// orbital rotation
 	void				rotate_orb();
-	void				subrotate(arma::mat const& vec_sub, double& val_d, arma::vec& vec_d, arma::mat& vec_other, arma::sp_mat& H_other, arma::mat& H_d_other);
-
-	// o(v) stands for occupied (virtual) except do(dv)
 	double				val_do;
 	double 				val_dv;
 	arma::vec			vec_do;
 	arma::vec			vec_dv;
-	arma::mat			vec_o;
-	arma::mat			vec_v;
+	arma::mat			vec_o; // occupied bath orbitals
+	arma::mat			vec_v; // virtual bath orbitals
 	arma::sp_mat		F_o; // diagonal 
 	arma::sp_mat 		F_v; // diagonal
 	arma::mat			F_do_o;
 	arma::mat 			F_dv_v;
+
+	// sign adjustment for orbitals
+	void				adj_orb_sign();
 
 	// selective CIS-ND
 	void				solve_cisnd();
@@ -50,13 +53,12 @@ struct SIAM
 	arma::vec			n_cisnd;
 	arma::vec			val_cisnd;
 	arma::mat 			vec_cisnd;
-	arma::mat			coef;
+	arma::mat			coef; // part of vec_cisnd
 
 	void				calc_bath();
 	void 				calc_Gamma();
 
 	// derivative coupling of a subspace of adiabats
-	arma::uword			sz_sub; // size of subspace adiabats for running dynamics
 	void 				calc_dc_adi();
 	arma::mat			dc_adi;
 
@@ -68,7 +70,7 @@ struct SIAM
 	arma::mat			_vec_o;
 	arma::mat			_vec_v;
 	arma::vec			_val_cisnd;
-	arma::mat 			_coef; // part of vec_cisnd
+	arma::mat 			_coef;
 
 	d2d					E_imp;
 	d2d 				E_nuc;
@@ -81,28 +83,23 @@ struct SIAM
 	arma::uword 		n_vir;
 	arma::span			span_occ;
 	arma::span 			span_vir;
+	arma::uword			sz_sub; // size of subspace adiabats for dynamics
 	arma::span			span_sub;
-	arma::sp_mat		F(double const& n);
-	arma::sp_mat 		F();
+	arma::mat			F();
+	arma::mat			F(double const& n);
 	double				n2n(double const& n);
 
 	// matrix elements
-	arma::mat			Pdodv();
-	arma::mat			Pdv();
-	arma::mat			Pdo();
-	arma::mat			Pdob();
-	arma::mat			Pjdv();
-	arma::mat			Pdvb();
-	arma::mat			Pjdo();
-	arma::mat			Pab();
-	arma::mat			Pji();
+	double				Pdodo();
+	double				Pdvdv();
+	double				Pdodv();
 	
-	arma::mat			Fdo();
-	arma::mat			Fdv();
-	arma::mat			Fo();
-	arma::mat			Fv();
+	double				Fdo();
+	double				Fdv();
+	arma::mat			Fij();
+	arma::mat			Fab();
 	arma::mat			Fdvb();
-	arma::mat			Fjdo();
+	arma::mat			Fdoj();
 	arma::mat			Io();
 	arma::mat			Iv();
 
@@ -177,10 +174,12 @@ struct SIAM
 	arma::mat			N_oviv_ovjv();
 };
 
-void zeyu_sign(arma::mat const& vecs_old, arma::mat& vecs_new, arma::mat const& S = arma::mat{});
+void subrotate(arma::mat const& vec_sub, arma::vec& vec_d, arma::mat& vec_other, arma::mat const& H, double& H_d, arma::sp_mat& H_other, arma::mat& H_d_other);
+
+void zeyu_sign(arma::mat const& _vecs, arma::mat& vecs, arma::mat const& S = arma::mat{});
 
 arma::mat calc_dc(arma::mat const& _coef, arma::mat const& coef, double const& dx, arma::mat const& S = arma::mat{});
 
-arma::mat S_exact(arma::vec const& vec_do_, arma::mat const& vec_occ_, arma::vec const& vec_dv_, arma::mat const& vec_vir_, arma::vec const& vec_do, arma::mat const& vec_occ, arma::vec const& vec_dv, arma::mat const& vec_vir);
+arma::mat S_exact(arma::vec const& _vec_do, arma::mat const& _vec_o, arma::vec const& _vec_dv, arma::mat const& _vec_v, arma::vec const& vec_do, arma::mat const& vec_o, arma::vec const& vec_dv, arma::mat const& vec_v);
 
 #endif
