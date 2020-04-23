@@ -13,7 +13,6 @@ n_mf= np.fromfile(datadir+'n_mf.dat')
 n_cisnd= np.fromfile(datadir+'n_cisnd.dat')
 dc_adi = np.fromfile(datadir+'dc_adi.dat')
 
-print(dc_adi)
 nx = len(xgrid)
 n_cisnd = np.reshape(n_cisnd, (nx,-1))
 dc_adi = np.reshape(dc_adi, (nx,-1))
