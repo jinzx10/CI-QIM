@@ -89,11 +89,11 @@ int main(int, char**argv) {
 
 	// x grid
 	auto density = [&] (double x) { 
-		return dox_base + 
-			dox_peak * exp( -(x-xc)*(x-xc) / 2.0 / dox_width / dox_width ) + 
-			dox_peak * exp( -(x-xc2)*(x-xc2) / 2.0 / dox_width / dox_width );
+		return dox_base + dox_peak * ( gauss(x, xc, dox_width) + 
+				gauss(x, xc2, dox_width) );
 	};
-	vec xgrid = grid(-20, 40, density);
+	double x_W = max(0.5*std::abs(xc2-xc), std::abs(xc-x0_fil), std::abs(xc-x0_mpt));
+	vec xgrid = grid(min(xc, xc2) - x_W, max(xc, xc2) + x_W, density);
 	uword nx = xgrid.n_elem;
 
 	if (id == 0) {
@@ -107,20 +107,27 @@ int main(int, char**argv) {
 
 	uword sz_cisnd = 2 * (n_occ + n_vir) - 1;
 
+	// size of subspace adiabats
+	uword sz_sub = 3;
+
 	// local variables and their initialization
 	vec E_mf_local, n_mf_local;
 	mat E_cisnd_local, n_cisnd_local;
+	mat dc_adi_local;
 
 	set_size(nx_local, E_mf_local, n_mf_local);
 	set_size(sz_cisnd, nx_local, E_cisnd_local, n_cisnd_local);
+	set_size(sz_sub*sz_sub, nx_local, dc_adi_local);
 
 	// global variables (used by proc 0)
 	vec E_mf, n_mf;
 	mat E_cisnd, n_cisnd;
+	mat dc_adi;
 
 	if (id == 0) {
 		set_size(nx, E_mf, n_mf);
 		set_size(sz_cisnd, nx, E_cisnd, n_cisnd);
+		set_size(sz_sub*sz_sub, nx, dc_adi);
 		sw.run(0);
 	}
 
@@ -128,7 +135,6 @@ int main(int, char**argv) {
 
 	// model initialization
 	double x0 = xgrid(idx_start) - 0.001;
-	uword sz_sub = 30;
 	SIAM model(E_imp, E_mpt, bath, cpl, U, n_occ, sz_sub, x0);
 
 	if (id == 0) {
@@ -143,6 +149,7 @@ int main(int, char**argv) {
 		n_mf_local(i) = model.n_mf;
 		E_cisnd_local.col(i) = model.val_cisnd;
 		n_cisnd_local.col(i) = model.n_cisnd;
+		dc_adi_local.col(i) = model.dc_adi.as_col();
 
 		if (id == 0)
 			sw.report();
@@ -152,8 +159,8 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_cisnd_local, 
-			 E_cisnd, n_cisnd_local, n_cisnd );
+	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_cisnd_local, E_cisnd, 
+			n_cisnd_local, n_cisnd, dc_adi_local, dc_adi );
 
 	if (id == 0) {
 		mkdir(datadir);
@@ -162,7 +169,8 @@ int main(int, char**argv) {
 				E_mf, "E_mf.dat",
 				n_mf, "n_mf.dat",
 				E_cisnd, "E_cisnd.dat",
-				n_cisnd, "n_cisnd.dat"
+				n_cisnd, "n_cisnd.dat",
+				dc_adi, "dc_adi.dat"
 		);
 		sw.report("program end");
 		std::cout << std::endl << std::endl << std::endl;

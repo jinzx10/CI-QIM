@@ -1,6 +1,7 @@
 #include "SIAM.h"
 #include "math_helper.h"
 #include "arma_helper.h"
+#include <cassert>
 
 using namespace arma;
 
@@ -32,11 +33,13 @@ SIAM::SIAM(
 
 void SIAM::set_and_calc(double const& x_) {
 	move_new_to_old();
-	h(0,0) = E_imp(x_);
+	x = x_;
+	h(0,0) = E_imp(x);
 	solve_mf();
 	rotate_orb();
 	adj_orb_sign();
 	solve_cisnd();
+	calc_dc_adi();
 }
 
 mat SIAM::F() {
@@ -216,11 +219,11 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	uvec vir = range(n_occ, n_occ+n_vir-1);
 	uvec i = range(1, n_occ-1);
 	uvec j = range(1, n_occ-1);
-	uword d0 = 0;
-	uword dv = n_occ;
+	uvec d0 = uvec{0};
+	uvec dv = uvec{n_occ};
 
-	mat ovl = join_r(_vec_do, _vec_o, _vec_dv, _vec_v).t() * 
-		join_r(vec_do, vec_o, vec_dv, vec_v).t();
+	mat ovl = join_r(mat{_vec_do}, _vec_o, mat{_vec_dv}, _vec_v).t() * 
+		join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
 
 	///////////////////////////////////////////////////////////
 	//							M
@@ -240,10 +243,83 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 	// Maj
 	q = cat(dv, occ);
-	mat Z = ovl(i, q);
+	mat Z = ovl(i,q);
+	mat ns = null(Z);
+	mat Ro = ovl(d0,q) * ns;
+	mat Ra = ovl(vir,q) * ns;
+	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
+	mat v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
+	mat x = ns * join_cols(u.t(), v.t());
+	mat M3 = x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+		( det(ovl(occ,occ)) * ( ovl(vir,dv) - ovl(vir,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+
+	// Mib
+	mat ovl2 = ovl.t();
+	q = cat(dv, occ);
+	Z = ovl2(i,q);
+	ns = null(Z);
+	Ro = ovl2(d0,q) * ns;
+	Ra = ovl2(vir,q) * ns;
+	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
+	v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
+	x = ns * join_cols(u.t(), v.t());
+	mat M4 = x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+		( det(ovl2(occ,occ)) * ( ovl2(vir,dv) - ovl2(vir,occ) * solve(ovl2(occ,occ), ovl2(occ,dv)) ) );
+	M4 = M4.t();
+
+	// individual M block
+	span r = span(2, M1.n_rows-1);
+	span c = span(2, M1.n_cols-1);
+	double M00 = M1(0,0);
+	double M01 = M1(0,1);
+	mat M0b = M1(0, c);
+	double M10 = M1(1,0);
+	double M11 = M1(1,1);
+	mat M1b = M1(1, c);
+	mat Ma0 = M1(r, 0);
+	mat Ma1 = M1(r, 1);
+	mat Mab = M1(r, c);
+
+	r = span(1, M2.n_rows-1);
+	c = span(1, M2.n_cols-1);
+	mat M0j = M2(0, c);
+	mat Mi0 = M2(r, 0);
+	mat Mij = M2(r, c);
+
+	mat M1j = M3.row(0);
+	mat Maj = M3.tail_rows(M3.n_rows-1);
+
+	mat Mi1 = M4.col(0);
+	mat Mib = M4.tail_cols(M4.n_cols-1);
 
 
+	mat SA = join<mat>({
+			{mat{M00*M00}			, mat{sqrt(2.0)*M00*M01}, sqrt(2.0)*M00*M0b	, sqrt(2.0)*M00*M0j}, 
+			{mat{sqrt(2.0)*M00*M10}	, mat{M00*M11+M10*M01}	, M00*M1b+M10*M0b	, M00*M1j+M10*M0j},
+			{sqrt(2.0)*M00*Ma0		, M00*Ma1+Ma0*M01		, M00*Mab+Ma0*M0b	, M00*Maj+Ma0*M0j},
+			{sqrt(2.0)*M00*Mi0		, M00*Mi1+Mi0*M01		, M00*Mib+Mi0*M0b	, M00*Mij+Mi0*M0j} 
+	});
 
+	mat SB = join<mat>({
+			{mat{M10*M10}			, sqrt(2.0)*M10*M0b	, sqrt(2.0)*M01*M0j},
+			{mat{sqrt(2.0)*M01*M11}	, M11*M0b+M01*M1b	, M11*M0j+M01*M1j},
+			{sqrt(2.0)*M01*Ma1		, Ma1*M0b+M01*Mab	, Ma1*M0j+M01*Maj},
+			{sqrt(2.0)*M01*Mi1		, Mi1*M0b+M01*Mib	, Mi1*M0j+M01*Mij}
+	});
+
+	mat SC = join<mat>({ 
+			{mat{M10*M10}		, mat{sqrt(2.0)*M11*M10}, sqrt(2.0)*M1b*M10	, sqrt(2.0)*M1j*M10},
+			{sqrt(2.0)*Ma0*M10	, Ma0*M11+Ma1*M10		, Ma0*M1b+Mab*M10	, Ma0*M1j+Maj*M10},
+			{sqrt(2.0)*Mi0*M10	, Mi0*M11+Mi1*M10		, Mi0*M1b+Mib*M10	, Mi0*M1j+Mij*M10}
+	});
+
+	mat SD = join<mat>({
+			{mat{M11*M11}		, sqrt(2.0)*M11*M1b	, sqrt(2.0)*M11*M1j},
+			{sqrt(2.0)*M11*Ma1	, M11*Mab+Ma1*M1b	, M11*Maj+Ma1*M1j},
+			{sqrt(2.0)*M11*Mi1	, M11*Mib+Mi1*M1b	, M11*Mij+Mi1*M1j}
+	});
+
+	return join<mat>({{SA, SB}, {SC, SD}});
 }
 
 ///////////////////////////////////////////////////////////
