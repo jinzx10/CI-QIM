@@ -28,6 +28,7 @@ SIAM::SIAM(
 	// initialization
 	solve_mf();
 	rotate_orb();
+	calc_basic_elem();
 	solve_cisnd();
 }
 
@@ -38,6 +39,7 @@ void SIAM::set_and_calc(double const& x_) {
 	solve_mf();
 	rotate_orb();
 	adj_orb_sign();
+	calc_basic_elem();
 	solve_cisnd();
 	calc_dc_adi();
 }
@@ -69,8 +71,8 @@ void SIAM::solve_mf() {
 }
 
 void SIAM::rotate_orb() {
-	subrotate(vec_mf.cols(span_occ), vec_do, vec_o, F(), val_do, F_o, F_do_o);
-	subrotate(vec_mf.cols(span_vir), vec_dv, vec_v, F(), val_dv, F_v, F_dv_v);
+	subrotate(vec_mf.cols(span_occ), vec_do, vec_o, F(), Fdodo, Fij);
+	subrotate(vec_mf.cols(span_vir), vec_dv, vec_v, F(), Fdvdv, Fab);
 }
 
 void SIAM::adj_orb_sign() {
@@ -78,6 +80,15 @@ void SIAM::adj_orb_sign() {
 	zeyu_sign(_vec_dv, vec_dv);
 	zeyu_sign(_vec_o, vec_o);
 	zeyu_sign(_vec_v, vec_v);
+}
+
+void SIAM::calc_basic_elem() {
+	Pdodo = vec_do(0) * vec_do(0);
+	Pdodv = vec_do(0) * vec_dv(0);;
+	Pdvdv = vec_dv(0) * vec_dv(0);;
+
+	Fdoj = vec_do.t() * F() * vec_o;
+	Fdvb = vec_dv.t() * F() * vec_v;
 }
 
 void SIAM::solve_cisnd() {
@@ -136,7 +147,7 @@ void SIAM::move_new_to_old() {
 	_coef = coef;
 }
 
-void subrotate(mat const& vec_sub, vec& vec_d, mat& vec_other, mat const& H, double& H_d, sp_mat& H_other, mat& H_d_other) {
+void subrotate(mat const& vec_sub, vec& vec_d, mat& vec_other, mat const& H, double& H_d, sp_mat& H_other) {
 	uword sz = vec_sub.n_cols;
 
 	// first rotation: separate the Schmidt orbital from the subspace
@@ -154,7 +165,6 @@ void subrotate(mat const& vec_sub, vec& vec_d, mat& vec_other, mat const& H, dou
 	eig_sym( val_other, q, vec_other.t() * H * vec_other );
 	vec_other *= q;
 	H_other = diagmat(val_other);
-	H_d_other= vec_d.t() * H * vec_other;
 }
 
 void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
@@ -169,7 +179,7 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 
 	// Zeyu's algorithm
 	mat U;
-	if (!S.n_elem)
+	if (S.is_empty())
 		U = _vecs.t() * vecs;
 	else
 		U = _vecs.t() * S * vecs;
@@ -187,7 +197,7 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 				double D = 3.0 * ( U(j,j)*U(j,j) + U(k,k)*U(k,k) ) + 
 					6.0 * U(j,k) * U(k,j) + 8.0 * ( U(j,j) + U(k,k) ) -
 					3.0 * ( dot(U.row(j), U.col(j)) + 
-							dot(U.row(k),U.col(k)) );
+							dot(U.row(k), U.col(k)) );
 				if (D < 0) {
 					vecs.cols(uvec{j,k}) *= -1;
 					U.cols(uvec{j,k}) *= -1;
@@ -201,13 +211,17 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 
 mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
 	mat overlap;
-	if (!S.n_elem)
+	if (S.is_empty())
 		overlap = _coef.t() * coef;
 	else
 		overlap = _coef.t() * S * coef;
 
 	// Lowdin-orthoginalization
-	overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
+	mat sqrtm_oto = sqrtmat_sympd( overlap.t() * overlap );
+	if (eig_sym(sqrtm_oto)(0) < 0)
+		sqrtm_oto *= -1;
+	overlap *= inv_sympd(sqrtm_oto);
+	//overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
 
 	return real( logmat(overlap) ) / dx;
 }
@@ -322,53 +336,17 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	return join<mat>({{SA, SB}, {SC, SD}});
 }
 
+sp_mat SIAM::Io() {
+	return speye(n_occ-1, n_occ-1);
+}
+
+sp_mat SIAM::Iv() {
+	return speye(n_vir-1, n_vir-1);
+}
+
 ///////////////////////////////////////////////////////////
 //		below are all the boring matrix elements
 ///////////////////////////////////////////////////////////
-double SIAM::Pdodv() {
-	return vec_do(0) * vec_dv(0);
-}
-
-double SIAM::Pdvdv() {
-	return vec_dv(0) * vec_dv(0);
-}
-
-double SIAM::Pdodo() {
-	return vec_do(0) * vec_do(0);
-}
-
-double SIAM::Fdo() {
-	return val_do;
-}
-
-double SIAM::Fdv() {
-	return val_dv;
-}
-
-mat SIAM::Fij() {
-	return conv_to<mat>::from(F_o);
-}
-
-mat SIAM::Fab() {
-	return conv_to<mat>::from(F_v);
-}
-
-mat SIAM::Fdvb() {
-	return F_dv_v;
-}
-
-mat SIAM::Fdoj() {
-	return F_do_o;
-}
-
-mat SIAM::Io() {
-	return eye(n_occ-1, n_occ-1);
-}
-
-mat SIAM::Iv() {
-	return eye(n_vir-1, n_vir-1);
-}
-
 mat SIAM::H_gnd_gnd() {
 	return mat{E_mf};
 }
@@ -386,7 +364,7 @@ mat SIAM::H_gnd_jdv() {
 }
 
 mat SIAM::H_gnd_ovov() {
-	return mat{U * Pdodv() * Pdodv()};
+	return mat{U * Pdodv * Pdodv};
 }
 
 mat SIAM::H_gnd_ovob() {
@@ -398,19 +376,19 @@ mat SIAM::H_gnd_ovjv() {
 }
 
 mat SIAM::H_dodv_dodv() {
-	return mat{E_mf + Fdv() - Fdo() + U * Pdodo() * Pdvdv()};
+	return mat{E_mf + Fdvdv - Fdodo + U * Pdodo * Pdvdv};
 }
 
 mat SIAM::H_dodv_dob() {
-    return Fdvb();
+    return Fdvb;
 }
 
 mat SIAM::H_dodv_jdv() {
-	return -Fdoj();
+	return -Fdoj;
 }
 
 mat SIAM::H_dodv_ovov() {
-   	return mat{sqrt(2.0) * U * Pdodv() * (Pdvdv()-Pdodo())};
+   	return mat{sqrt(2.0) * U * Pdodv * (Pdvdv-Pdodo)};
 }
 
 mat SIAM::H_dodv_ovob() {
@@ -422,7 +400,7 @@ mat SIAM::H_dodv_ovjv() {
 }
 
 mat SIAM::H_doa_dob() {
-	return Iv()*(E_mf-Fdo()) + Fab();
+	return conv_to<mat>::from(Iv()*(E_mf-Fdodo) + Fab);
 }
 
 mat SIAM::H_doa_jdv() {
@@ -434,7 +412,7 @@ mat SIAM::H_doa_ovov() {
 }
 
 mat SIAM::H_doa_ovob() {
-	return -U * Iv() * Pdodv() * Pdodo();
+	return conv_to<mat>::from(-U * Iv() * Pdodv * Pdodo);
 }
 
 mat SIAM::H_doa_ovjv() {
@@ -442,7 +420,7 @@ mat SIAM::H_doa_ovjv() {
 }
 
 mat SIAM::H_idv_jdv() {
-   	return Io()*(E_mf+Fdv()) - Fij();
+   	return conv_to<mat>::from(Io()*(E_mf+Fdvdv) - Fij);
 }
 
 mat SIAM::H_idv_ovov() {
@@ -454,25 +432,25 @@ mat SIAM::H_idv_ovob() {
 }
 
 mat SIAM::H_idv_ovjv() { 
-	return U * Io() * Pdodv() * Pdvdv();
+	return conv_to<mat>::from(U * Io() * Pdodv * Pdvdv);
 }
 
 mat SIAM::H_ovov_ovov() {
-	return mat{ E_mf + 2.0*(Fdv()-Fdo()) + 
-		U * (Pdvdv()-Pdodo()) * (Pdvdv()-Pdodo()) };
+	return mat{ E_mf + 2.0*(Fdvdv-Fdodo) + 
+		U * (Pdvdv-Pdodo) * (Pdvdv-Pdodo) };
 }
 
 mat SIAM::H_ovov_ovob() {
-   	return sqrt(2.0) * Fdvb();
+   	return sqrt(2.0) * Fdvb;
 }
 
 mat SIAM::H_ovov_ovjv() {
-	return -sqrt(2.0) * Fdoj();
+	return -sqrt(2.0) * Fdoj;
 }
 
 mat SIAM::H_ovoa_ovob() {
-	return Iv() * ( E_mf + Fdv() - Fdo() ) - 
-		Iv() * ( Fdo() + U * (Pdvdv()-Pdodo()) * Pdodo()) + Fab();
+	return conv_to<mat>::from( Iv() * ( E_mf + Fdvdv - Fdodo ) - 
+		Iv() * ( Fdodo + U * (Pdvdv-Pdodo) * Pdodo) + Fab );
 }
 
 mat SIAM::H_ovoa_ovjv() {
@@ -480,8 +458,8 @@ mat SIAM::H_ovoa_ovjv() {
 }
 
 mat SIAM::H_oviv_ovjv() {
-	return Io() * ( E_mf + Fdv() - Fdo() ) + 
-		Io() * ( Fdv() + U * (Pdvdv()-Pdodo()) * Pdvdv() ) - Fij();
+	return conv_to<mat>::from( Io() * ( E_mf + Fdvdv - Fdodo ) + 
+		Io() * ( Fdvdv + U * (Pdvdv-Pdodo) * Pdvdv ) - Fij );
 }
 
 mat SIAM::N_gnd_gnd() { 
@@ -489,7 +467,7 @@ mat SIAM::N_gnd_gnd() {
 }
 
 mat SIAM::N_gnd_dodv() {
-	return mat{Pdodv()/sqrt(2.0)};
+	return mat{Pdodv/sqrt(2.0)};
 }
 
 mat SIAM::N_gnd_dob() {
@@ -513,7 +491,7 @@ mat SIAM::N_gnd_ovjv() {
 }
 
 mat SIAM::N_dodv_dodv() {
-	return mat{n_mf + 0.5*(Pdvdv()-Pdodo())};
+	return mat{n_mf + 0.5*(Pdvdv-Pdodo)};
 }
 	
 mat SIAM::N_dodv_dob() {
@@ -525,7 +503,7 @@ mat SIAM::N_dodv_jdv() {
 }
 
 mat SIAM::N_dodv_ovov() {
-	return mat{Pdodv() / sqrt(2.0)};
+	return mat{Pdodv / sqrt(2.0)};
 }
 
 mat SIAM::N_dodv_ovob() {
@@ -537,7 +515,7 @@ mat SIAM::N_dodv_ovjv() {
 }
 
 mat SIAM::N_doa_dob() {
-	return Iv()*n_mf - 0.5*Iv()*Pdodo();
+	return conv_to<mat>::from(Iv()*n_mf - 0.5*Iv()*Pdodo);
 }
 
 mat SIAM::N_doa_jdv() {
@@ -549,7 +527,7 @@ mat SIAM::N_doa_ovov() {
 }
 
 mat SIAM::N_doa_ovob() {
-	return 0.5*Iv()*Pdodv();
+	return conv_to<mat>::from(0.5*Iv()*Pdodv);
 }
 
 mat SIAM::N_doa_ovjv() {
@@ -557,7 +535,7 @@ mat SIAM::N_doa_ovjv() {
 }
 
 mat SIAM::N_idv_jdv() {
-	return Io()*n_mf + 0.5*Io()*Pdvdv();
+	return conv_to<mat>::from(Io()*n_mf + 0.5*Io()*Pdvdv);
 }
 
 mat SIAM::N_idv_ovov() {
@@ -569,11 +547,11 @@ mat SIAM::N_idv_ovob() {
 }
 
 mat SIAM::N_idv_ovjv() {
-	return 0.5*Io()*Pdodv();
+	return conv_to<mat>::from(0.5*Io()*Pdodv);
 }
 
 mat SIAM::N_ovov_ovov() {
-	return mat{n_mf + Pdvdv() - Pdodo()};
+	return mat{n_mf + Pdvdv - Pdodo};
 }
 
 mat SIAM::N_ovov_ovob() {
@@ -585,7 +563,7 @@ mat SIAM::N_ovov_ovjv() {
 }
 
 mat SIAM::N_ovoa_ovob() {
-	return Iv()*(n_mf-Pdodo()) + 0.5*Iv()*Pdvdv();
+	return conv_to<mat>::from(Iv()*(n_mf-Pdodo) + 0.5*Iv()*Pdvdv);
 }
 
 mat SIAM::N_ovoa_ovjv() {
@@ -593,7 +571,7 @@ mat SIAM::N_ovoa_ovjv() {
 }
 
 mat SIAM::N_oviv_ovjv() {
-	return Io()*(n_mf+Pdvdv()) - 0.5*Io()*Pdodo();
+	return conv_to<mat>::from(Io()*(n_mf+Pdvdv) - 0.5*Io()*Pdodo);
 }
 
 

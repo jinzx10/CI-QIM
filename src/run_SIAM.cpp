@@ -157,12 +157,18 @@ int main(int, char**argv) {
 		n_cisnd_local.col(i) = model.n_cisnd;
 		dc_adi_local.col(i) = model.dc_adi.as_col();
 
-		if (id == 0)
+		if (nprocs == 1) {
 			sw.report();
+			std::cout << 
+		} else {
 
-		std::cout << "proc id = " << id 
-			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
-			<< std::endl;
+			if (id == 0)
+				sw.report();
+
+			std::cout << "proc id = " << id 
+				<< "   local task: " << (i+1) << "/" << nx_local << " finished"
+				<< std::endl;
+		}
 	}
 
 	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_cisnd_local, E_cisnd, 
@@ -179,7 +185,7 @@ int main(int, char**argv) {
 				dc_adi, "dc_adi.dat"
 		);
 		sw.report("program end");
-		std::cout << std::endl << std::endl << std::endl;
+		std::cout << std::endl << std::endl << std::endl; 
 	}
 
 	MPI_Finalize();

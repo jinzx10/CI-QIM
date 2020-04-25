@@ -31,19 +31,25 @@ struct SIAM
 
 	// orbital rotation
 	void				rotate_orb();
-	double				val_do;
-	double 				val_dv;
+	double				Fdodo;
+	double 				Fdvdv;
 	arma::vec			vec_do;
 	arma::vec			vec_dv;
 	arma::mat			vec_o; // occupied bath orbitals
 	arma::mat			vec_v; // virtual bath orbitals
-	arma::sp_mat		F_o; // diagonal 
-	arma::sp_mat 		F_v; // diagonal
-	arma::mat			F_do_o;
-	arma::mat 			F_dv_v;
+	arma::sp_mat		Fij; // diagonal 
+	arma::sp_mat 		Fab; // diagonal
 
-	// sign adjustment for orbitals
+	// adjust sign
 	void				adj_orb_sign();
+
+	// basic elements for matrix
+	void				calc_basic_elem();
+	double				Pdodo;
+	double				Pdvdv;
+	double				Pdodv;
+	arma::mat			Fdvb;
+	arma::mat			Fdoj;
 
 	// selective CIS-ND
 	void				solve_cisnd();
@@ -88,21 +94,10 @@ struct SIAM
 	arma::mat			F();
 	arma::mat			F(double const& n);
 	double				n2n(double const& n);
+	arma::sp_mat		Io();
+	arma::sp_mat		Iv();
 
 	// matrix elements
-	double				Pdodo();
-	double				Pdvdv();
-	double				Pdodv();
-	
-	double				Fdo();
-	double				Fdv();
-	arma::mat			Fij();
-	arma::mat			Fab();
-	arma::mat			Fdvb();
-	arma::mat			Fdoj();
-	arma::mat			Io();
-	arma::mat			Iv();
-
 	arma::mat			H_gnd_gnd();
 	arma::mat			H_gnd_dodv();
 	arma::mat			H_gnd_dob();
@@ -174,7 +169,7 @@ struct SIAM
 	arma::mat			N_oviv_ovjv();
 };
 
-void subrotate(arma::mat const& vec_sub, arma::vec& vec_d, arma::mat& vec_other, arma::mat const& H, double& H_d, arma::sp_mat& H_other, arma::mat& H_d_other);
+void subrotate(arma::mat const& vec_sub, arma::vec& vec_d, arma::mat& vec_other, arma::mat const& H, double& H_d, arma::sp_mat& H_other);
 
 void zeyu_sign(arma::mat const& _vecs, arma::mat& vecs, arma::mat const& S = arma::mat{});
 

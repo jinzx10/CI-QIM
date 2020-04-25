@@ -5,7 +5,7 @@ ODIR 			= ${ROOTDIR}/obj
 SDIR 			= ${ROOTDIR}/src
 
 CC 				= mpicxx
-CPPFLAGS 		= -std=c++11 -O2 -I${IDIR} -DARMA_ALLOW_FAKE_GCC # -DNO_VELOCITY_REVERSAL
+CPPFLAGS 		= -std=c++14 -O2 -I${IDIR} -DARMA_ALLOW_FAKE_GCC # -DNO_VELOCITY_REVERSAL
 LDFLAGS 		= -larmadillo
 
 vpath %.h ${IDIR}
