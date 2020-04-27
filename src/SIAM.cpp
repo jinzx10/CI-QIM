@@ -18,7 +18,9 @@ SIAM::SIAM(
 	E_imp(E_imp_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
 	n_bath(bath.n_elem), n_occ(n_occ_), n_vir(n_bath+1-n_occ),
 	span_occ(span(0, n_occ-1)), span_vir(span(n_occ, n_bath)),
-	sz_sub(sz_sub_), span_sub(span(0, sz_sub-1))
+	sz_sub(sz_sub_), span_sub(span(0, sz_sub-1)), 
+	sz_cisnd(2*(n_occ+n_vir)-1), sz_jb((n_occ-1)*(n_vir-1)),
+	dE_avg((bath.max()-bath.min())/n_bath)
 {
 	h = diagmat(join_cols(vec{E_imp(x0_)}, bath));
 	h(0, span(1, n_bath)) = cpl.t();
@@ -41,6 +43,7 @@ void SIAM::set_and_calc(double const& x_) {
 	adj_orb_sign();
 	calc_basic_elem();
 	solve_cisnd();
+	calc_Gamma_rlx();
 	calc_dc_adi();
 }
 
@@ -122,12 +125,29 @@ mat SIAM::N_cisnd() {
 }
 
 
-void SIAM::calc_bath() {
-
+sp_mat SIAM::V_cpl() {
+	sp_mat V(sz_cisnd, 2*sz_jb);
+	V(span(2, n_vir), span(0, sz_jb-1)) = H_doa_jb();
+	V(span(n_vir+1, n_vir+n_occ-1), span(0, sz_jb-1)) = H_idv_jb();
+	V(span(n_occ+n_vir+1, n_occ+2*n_vir-1), span(sz_jb, 2*sz_jb-1)) 
+		= H_ovoa_ovjb();
+	V(span(n_occ+2*n_vir, 2*(n_occ+n_vir)-2), span(sz_jb, 2*sz_jb-1)) 
+		= H_oviv_ovjb();
+	return V;
 }
 
-void SIAM::calc_Gamma() {
+vec SIAM::E_bath() {
+	sp_mat H_ia_jb = E_mf * kron(Iv(), Io()) - kron(Iv(), Fij) + kron(Fab, Io());
+    sp_mat H_ovia_ovjb = (E_mf + Fdvdv - Fdodo) * kron(Iv(), Io()) 
+		+ kron(Fab, Io()) - kron(Iv(), Fij) 
+		- U/2.0 * Pdvdv * Pdodo * kron(Iv(), Io());
+	return vec{join_cols(H_ia_jb.diag(), H_ovia_ovjb.diag())};
+}
 
+void SIAM::calc_Gamma_rlx() {
+	mat V_adi = coef.tail_cols(sz_sub-1).t() * V_cpl();
+	Gamma_rlx = 2.0 * acos(-1.0) * sum( square(V_adi) % 
+			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 );
 }
 
 void SIAM::calc_dc_adi() {
@@ -460,6 +480,22 @@ mat SIAM::H_ovoa_ovjv() {
 mat SIAM::H_oviv_ovjv() {
 	return conv_to<mat>::from( Io() * ( E_mf + Fdvdv - Fdodo ) + 
 		Io() * ( Fdvdv + U * (Pdvdv-Pdodo) * Pdvdv ) - Fij );
+}
+
+sp_mat SIAM::H_doa_jb() {
+	return -kron(Iv(), sp_mat{Fdoj});
+}
+
+sp_mat SIAM::H_idv_jb() {
+	return kron(sp_mat{Fdvb}, Io());
+}
+
+sp_mat SIAM::H_ovoa_ovjb() {
+	return -sqrt(2.0) * kron(Iv(), sp_mat{Fdoj});
+}
+
+sp_mat SIAM::H_oviv_ovjb() {
+	return sqrt(2) * kron(sp_mat{Fdvb}, Io());
 }
 
 mat SIAM::N_gnd_gnd() { 

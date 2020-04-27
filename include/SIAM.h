@@ -61,8 +61,10 @@ struct SIAM
 	arma::mat 			vec_cisnd;
 	arma::mat			coef; // part of vec_cisnd
 
-	void				calc_bath();
-	void 				calc_Gamma();
+	void 				calc_Gamma_rlx();
+	arma::vec			E_bath();
+	arma::sp_mat		V_cpl();
+	arma::vec			Gamma_rlx;
 
 	// derivative coupling of a subspace of adiabats
 	void 				calc_dc_adi();
@@ -91,6 +93,9 @@ struct SIAM
 	arma::span 			span_vir;
 	arma::uword			sz_sub; // size of subspace adiabats for dynamics
 	arma::span			span_sub;
+	arma::uword			sz_cisnd;
+	arma::uword			sz_jb;
+	double				dE_avg;
 	arma::mat			F();
 	arma::mat			F(double const& n);
 	double				n2n(double const& n);
@@ -98,6 +103,7 @@ struct SIAM
 	arma::sp_mat		Iv();
 
 	// matrix elements
+	// H_cisnd
 	arma::mat			H_gnd_gnd();
 	arma::mat			H_gnd_dodv();
 	arma::mat			H_gnd_dob();
@@ -133,6 +139,16 @@ struct SIAM
 
 	arma::mat			H_oviv_ovjv();
 
+
+	// V_cpl
+	arma::sp_mat		H_doa_jb();
+	arma::sp_mat		H_idv_jb();
+
+	arma::sp_mat		H_ovoa_ovjb();
+	arma::sp_mat		H_oviv_ovjb();
+
+
+	// N_cisnd
 	arma::mat			N_gnd_gnd();
 	arma::mat			N_gnd_dodv();
 	arma::mat			N_gnd_dob();
