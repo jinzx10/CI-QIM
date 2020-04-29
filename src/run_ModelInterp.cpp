@@ -1,0 +1,119 @@
+#include <mpi.h>
+#include "mpi_helper.h"
+#include "widgets.h"
+#include "ModelInterp.h"
+#include "arma_helper.h"
+
+using namespace arma;
+
+int main(int, char** argv) {
+
+	int id, nprocs;
+
+	::MPI_Init(nullptr, nullptr);
+	::MPI_Comm_rank(MPI_COMM_WORLD, &id);
+	::MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+	Stopwatch sw;
+
+	////////////////////////////////////////////////////////////
+	//					Read-in Stage
+	////////////////////////////////////////////////////////////
+	std::string readdir, savedir;
+	vec xgrid;
+	mat pes, dc, Gamma, force;
+	uword sz_x, sz_elec;
+
+	if (id == 0) {
+		readargs(argv, readdir, savedir);
+
+		std::cout << "read data from " << readdir << std::endl;
+		std::cout << "save data to " << readdir << std::endl;
+
+		arma_load( readdir, 
+				xgrid, "xgrid.dat",
+				pes, "E_cisnd.dat",
+				dc, "dc_adi.dat",
+				force, "F_cisnd.dat",
+				Gamma, "Gamma_rlx.dat"
+		);
+		sz_x = xgrid.n_elem;
+		sz_elec = pes.n_elem / sz_x;
+
+		pes.reshape(sz_elec, sz_x);
+		force.reshape(sz_elec, sz_x);
+		Gamma.reshape(sz_elec-1, sz_x);
+		dc.reshape(sz_elec*sz_elec, sz_x);
+
+		std::cout << "data read successfully" << std::endl;
+		std::cout << "# of coarse xgrid points: " << sz_x << std::endl;
+		std::cout << "size of electronic basis: " << sz_elec << std::endl;
+	}
+
+	bcast(sz_x, sz_elec);
+
+	if (id != 0) {
+		set_size(sz_x, xgrid);
+		set_size(sz_elec, sz_x, pes, force);
+		set_size(sz_elec-1, sz_x, Gamma);
+		set_size(sz_elec*sz_elec, sz_x, dc);
+	}
+
+	bcast(xgrid, pes, dc, force, Gamma);
+
+	ModelInterp model(xgrid, pes.t(), force.t(), dc.t(), Gamma.t());
+
+	uword nx = 2000;
+	vec x_fine = linspace(xgrid.min(), xgrid.max(), nx);
+	mat pes_fine, dc_fine, Gamma_fine, force_fine;
+
+	if (id == 0) {
+		std::cout << "model initialized" << std::endl;
+		set_size(sz_elec, nx, pes_fine, force_fine);
+		set_size(sz_elec-1, nx, Gamma_fine);
+		set_size(sz_elec*sz_elec, nx, dc_fine);
+		sw.run();
+	}
+
+	int nx_local = nx / nprocs;
+	int rem = nx % nprocs;
+	if (id < rem)
+		nx_local += 1;
+
+	mat pes_local, dc_local, force_local, Gamma_local;
+	set_size(sz_elec, nx_local, pes_local, force_local);
+	set_size(sz_elec-1, nx_local, Gamma_local);
+	set_size(sz_elec*sz_elec, nx_local, dc_local);
+
+	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
+	for (int i = 0; i != nx_local; ++i) {
+		double x = x_fine(idx_start+i);
+		pes_local.col(i) = model.E(x);
+		force_local.col(i) = model.F(x);
+		Gamma_local.col(i) = model.Gamma(x);
+		dc_local.col(i) = model.dc(x).as_col();
+
+		std::cout << "proc id = " << id 
+			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
+			<< std::endl;
+	}
+
+	gatherv( pes_local, pes_fine, force_local, force_fine,
+			Gamma_local, Gamma_fine, dc_local, dc_fine );
+
+	if (id == 0) {
+		mkdir(savedir);
+		arma_save<raw_binary>( savedir,
+				x_fine, "x_fine.dat",
+				pes_fine, "pes_fine.dat",
+				force_fine, "force_fine.dat",
+				dc_fine, "dc_fine.dat",
+				Gamma_fine, "Gamma_fine.dat"
+		);
+		sw.report();
+	}
+
+	MPI_Finalize();
+
+	return 0;
+}

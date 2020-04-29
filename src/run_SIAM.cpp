@@ -121,18 +121,18 @@ int main(int, char**argv) {
 
 	// local variables and their initialization
 	vec E_mf_local, n_mf_local;
-	mat E_cisnd_local, n_cisnd_local;
+	mat E_cisnd_local, n_cisnd_local, F_cisnd_local;
 	mat dc_adi_local;
 	mat Gamma_rlx_local;
 
 	set_size(nx_local, E_mf_local, n_mf_local);
-	set_size(sz_cisnd, nx_local, E_cisnd_local, n_cisnd_local);
+	set_size(sz_sub, nx_local, E_cisnd_local, n_cisnd_local, F_cisnd_local);
 	set_size(sz_sub*sz_sub, nx_local, dc_adi_local);
 	set_size(sz_sub-1, nx_local, Gamma_rlx_local);
 
 	// global variables (used by proc 0)
 	vec E_mf, n_mf;
-	mat E_cisnd, n_cisnd;
+	mat E_cisnd, n_cisnd, F_cisnd;
 	mat dc_adi;
 	mat Gamma_rlx;
 
@@ -144,7 +144,7 @@ int main(int, char**argv) {
 
 	if (id == 0) {
 		set_size(nx, E_mf, n_mf);
-		set_size(sz_cisnd, nx, E_cisnd, n_cisnd);
+		set_size(sz_sub, nx, E_cisnd, n_cisnd, F_cisnd);
 		set_size(sz_sub*sz_sub, nx, dc_adi);
 		set_size(sz_sub-1, nx, Gamma_rlx);
 		sw.run(0);
@@ -157,8 +157,9 @@ int main(int, char**argv) {
 		
 		E_mf_local(i) = model.E_mf;
 		n_mf_local(i) = model.n_mf;
-		E_cisnd_local.col(i) = model.val_cisnd;
+		E_cisnd_local.col(i) = model.val_cisnd + model.E_nuc(x);
 		n_cisnd_local.col(i) = model.n_cisnd;
+		F_cisnd_local.col(i) = model.F_cisnd + model.F_nucl;
 		dc_adi_local.col(i) = model.dc_adi.as_col();
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 
@@ -176,8 +177,8 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, 
-			E_cisnd_local, E_cisnd, n_cisnd_local, n_cisnd, 
+	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_cisnd_local, E_cisnd, 
+			n_cisnd_local, n_cisnd, F_cisnd_local, F_cisnd,
 			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx );
 
 	if (id == 0) {
@@ -188,6 +189,7 @@ int main(int, char**argv) {
 				n_mf, "n_mf.dat",
 				E_cisnd, "E_cisnd.dat",
 				n_cisnd, "n_cisnd.dat",
+				F_cisnd, "F_cisnd.dat",
 				dc_adi, "dc_adi.dat",
 				Gamma_rlx, "Gamma_rlx.dat"
 		);

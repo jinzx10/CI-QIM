@@ -59,7 +59,10 @@ struct SIAM
 	arma::vec			n_cisnd;
 	arma::vec			val_cisnd;
 	arma::mat 			vec_cisnd;
-	arma::mat			coef; // part of vec_cisnd
+
+	void				calc_force();
+	arma::vec			F_cisnd;
+	double				F_nucl;
 
 	void 				calc_Gamma_rlx();
 	arma::vec			E_bath();
@@ -78,7 +81,7 @@ struct SIAM
 	arma::mat			_vec_o;
 	arma::mat			_vec_v;
 	arma::vec			_val_cisnd;
-	arma::mat 			_coef;
+	arma::mat 			_vec_cisnd;
 
 	d2d					E_imp;
 	d2d 				E_nuc;

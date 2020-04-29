@@ -15,14 +15,14 @@ SIAM::SIAM(
 		uword		const&		sz_sub_,
 		double		const&		x0_
 ): 
-	E_imp(E_imp_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
+	x(x0_), E_imp(E_imp_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
 	n_bath(bath.n_elem), n_occ(n_occ_), n_vir(n_bath+1-n_occ),
 	span_occ(span(0, n_occ-1)), span_vir(span(n_occ, n_bath)),
 	sz_sub(sz_sub_), span_sub(span(0, sz_sub-1)), 
 	sz_cisnd(2*(n_occ+n_vir)-1), sz_jb((n_occ-1)*(n_vir-1)),
 	dE_avg((bath.max()-bath.min())/n_bath)
 {
-	h = diagmat(join_cols(vec{E_imp(x0_)}, bath));
+	h = diagmat(join_cols(vec{E_imp(x)}, bath));
 	h(0, span(1, n_bath)) = cpl.t();
 	h(span(1, n_bath), 0) = cpl;
 	n_mf = (h(0,0) < bath(n_occ));
@@ -38,11 +38,16 @@ void SIAM::set_and_calc(double const& x_) {
 	move_new_to_old();
 	x = x_;
 	h(0,0) = E_imp(x);
+
 	solve_mf();
+
 	rotate_orb();
 	adj_orb_sign();
 	calc_basic_elem();
+
 	solve_cisnd();
+
+	calc_force();
 	calc_Gamma_rlx();
 	calc_dc_adi();
 }
@@ -96,7 +101,8 @@ void SIAM::calc_basic_elem() {
 
 void SIAM::solve_cisnd() {
 	eig_sym( val_cisnd, vec_cisnd, H_cisnd() );
-	coef = mat(vec_cisnd.memptr(), vec_cisnd.n_rows, sz_sub, false);
+	val_cisnd.resize(sz_sub);
+	vec_cisnd.resize(sz_cisnd, sz_sub);
 	n_cisnd = sum( vec_cisnd % (N_cisnd() * vec_cisnd) , 0).t();
 }
 
@@ -124,6 +130,10 @@ mat SIAM::N_cisnd() {
 	} );
 }
 
+void SIAM::calc_force() {
+	F_cisnd = -(val_cisnd - _val_cisnd) / (x - _x);
+	F_nucl = -(E_nuc(x) - E_nuc(_x)) / (x - _x);
+}
 
 sp_mat SIAM::V_cpl() {
 	sp_mat V(sz_cisnd, 2*sz_jb);
@@ -145,15 +155,15 @@ vec SIAM::E_bath() {
 }
 
 void SIAM::calc_Gamma_rlx() {
-	mat V_adi = coef.tail_cols(sz_sub-1).t() * V_cpl();
+	mat V_adi = vec_cisnd.tail_cols(sz_sub-1).t() * V_cpl();
 	Gamma_rlx = 2.0 * acos(-1.0) * sum( square(V_adi) % 
 			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 );
 }
 
 void SIAM::calc_dc_adi() {
 	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, vec_do, vec_o, vec_dv, vec_v);
-	zeyu_sign(_coef, coef, S);
-	dc_adi = calc_dc(_coef, coef, x-_x, S);
+	zeyu_sign(_vec_cisnd, vec_cisnd, S);
+	dc_adi = calc_dc(_vec_cisnd, vec_cisnd, x-_x, S);
 }
 
 
@@ -164,7 +174,7 @@ void SIAM::move_new_to_old() {
 	_vec_o = vec_o;
 	_vec_v = vec_v;
 	_val_cisnd = val_cisnd;
-	_coef = coef;
+	_vec_cisnd = vec_cisnd;
 }
 
 void subrotate(mat const& vec_sub, vec& vec_d, mat& vec_other, mat const& H, double& H_d, sp_mat& H_other) {

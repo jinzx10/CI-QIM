@@ -175,8 +175,30 @@ inline double lininterp(double const& x0, arma::vec const& x, arma::vec const& y
 			if ( x(i) > x0 ) break;
 
 	}
-	double k = ( y(i) - y(i-1) ) / ( x(i) - x(i-1) );
-	return y(i-1) + k * (x0 - x(i-1));
+
+	return y(i-1) + ( y(i) - y(i-1) ) / ( x(i) - x(i-1) ) * (x0 - x(i-1));
+}
+
+inline arma::rowvec lininterp(double const& x0, arma::vec const& x, arma::mat const& y, bool is_evenly_spaced = false) {
+	arma::uword i = 1;
+
+	// x must be sorted in ascending order
+	if ( is_evenly_spaced ) {
+		if ( x0 > x(0) && x0 < x(x.n_elem-1) ) {
+			i = (x0 - x(0)) / (x(1) - x(0)) + 1; 
+		} else {
+			if ( x0 >= x(x.n_elem-1) )
+				i = x.n_elem - 1;
+		}
+	} else {
+		// must not have repeated elements
+		for (i = 1; i != x.n_elem-1; ++i)
+			if ( x(i) > x0 )
+				break;
+	}
+
+	return y.row(i-1) + 
+		( y.row(i) - y.row(i-1) ) / ( x(i) - x(i-1) ) * (x0 - x(i-1));
 }
 
 
