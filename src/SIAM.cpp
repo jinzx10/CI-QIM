@@ -26,6 +26,7 @@ SIAM::SIAM(
 	h(0, span(1, n_bath)) = cpl.t();
 	h(span(1, n_bath), 0) = cpl;
 	n_mf = (h(0,0) < bath(n_occ));
+	Gamma_rlx.zeros(sz_sub);
 
 	// initialization
 	solve_mf();
@@ -156,7 +157,7 @@ vec SIAM::E_bath() {
 
 void SIAM::calc_Gamma_rlx() {
 	mat V_adi = vec_cisnd.tail_cols(sz_sub-1).t() * V_cpl();
-	Gamma_rlx = 2.0 * acos(-1.0) * sum( square(V_adi) % 
+	Gamma_rlx.tail(sz_sub-1) = 2.0 * acos(-1.0) * sum( square(V_adi) % 
 			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 );
 }
 
