@@ -4,6 +4,7 @@
 #include "mpi_helper.h"
 #include "arma_helper.h"
 #include "widgets.h"
+#include "math_helper.h"
 
 using namespace arma;
 
@@ -20,24 +21,50 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
+	std::string file_fssh, file_struc;
+	Parser p({"readdir", "savedir", "n_trajs", "t_max", "dtc", 
+			"velo_rev", "fric_mode", "kT"});
+
 	std::string readdir;
 	std::string savedir;
 	int n_trajs;
 	double t_max;
 	double dtc;
+	int velo_rev;
+	int fric_mode;
+	double kT;
+
+	double omega;
+	double mass;
+	double x0_mpt;
 	
 	vec xgrid;
 	mat pes, force, Gamma, dc;
 	uword sz_x, sz_elec;
 
 	if (id == 0) {
-		readargs(argv, readdir, savedir, n_trajs, t_max, dtc);
-		std::cout << "data will be read from: " << readdir << std::endl;
-		std::cout << "data will be saved to: " << savedir << std::endl;
-		std::cout << "# of trajectories = " << n_trajs << std::endl;
-		std::cout << "maximun time = " << t_max << std::endl;
-		std::cout << "classical time step size = " << dtc << std::endl;
-		std::cout << "# of classical steps = " << t_max/dtc << std::endl;
+		readargs(argv, file_fssh, file_struc);
+
+		p.parse(file_fssh);
+		p.pour(readdir, savedir, n_trajs, t_max, dtc, velo_rev, fric_mode, kT);
+
+		p.reset({"omega", "mass", "x0_mpt"});
+		p.parse(file_struc);
+		p.pour(omega, mass, x0_mpt);
+
+		std::cout << "data will be read from: " << readdir << std::endl
+			<< "data will be saved to: " << savedir << std::endl
+			<< "# of trajectories = " << n_trajs << std::endl
+			<< "maximun time = " << t_max << std::endl
+			<< "classical time step size = " << dtc << std::endl
+			<< "# of classical steps = " << t_max/dtc << std::endl
+			<< "velocity reversal mode: " << velo_rev << std::endl
+			<< "friction mode: " << fric_mode << std::endl
+			<< "temperature: " << kT << std::endl
+			<< "omega = " << omega << std::endl
+			<< "mass = " << mass << std::endl
+			<< "x0_mpt = " << x0_mpt << std::endl
+			<< std::endl;
 
 		arma_load( readdir, 
 				xgrid, "xgrid.dat",
@@ -56,11 +83,11 @@ int main(int, char**argv) {
 		dc.reshape(sz_elec*sz_elec, sz_x);
 
 		std::cout << "data read successfully" << std::endl;
-		std::cout << "# of coarse xgrid points: " << sz_x << std::endl;
 		std::cout << "size of electronic basis: " << sz_elec << std::endl;
 	}
 
-	bcast(readdir, n_trajs, t_max, dtc, sz_x, sz_elec);
+	bcast(n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
+			omega, mass, x0_mpt, sz_x, sz_elec);
 
 	////////////////////////////////////////////////////////////
 	//					Model Setup
@@ -79,10 +106,6 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	//			Fewest-Switches Surface Hopping
 	////////////////////////////////////////////////////////////
-	double omega = 0.0002;
-	double mass = 2000;
-	double x0_mpt = 0;
-
 	uword ntc = t_max / dtc;
 	vec time_grid;
 	if (id == 0) {
@@ -91,20 +114,21 @@ int main(int, char**argv) {
 	}
 	bcast(dtc);
 
-#ifdef NO_FRICTION
-	double fric_gamma = 0;
-#else
-	double fric_gamma = 2.0 * mass * omega;
-#endif
+	double fric_gamma;
+	switch (fric_mode) {
+		case -1:
+			fric_gamma = 0.0;
+			break;
+		default:
+			fric_gamma = 2.0 * mass * omega;
+	}
 
-	double kT = 9.5e-4;
 	int n_trajs_local = n_trajs / nprocs;
 	int rem = n_trajs % nprocs;
 	if (id < rem)
 		n_trajs_local += 1;
 
-	arma::uword sz_rho = 2;
-	FSSH fssh(&model, mass, dtc, ntc, kT, fric_gamma);
+	FSSH_rlx fssh_rlx(&model, mass, dtc, ntc, kT, fric_gamma, velo_rev);
 
 	// local data
 	mat x_local, v_local, E_local;
@@ -136,20 +160,25 @@ int main(int, char**argv) {
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 
-		vec val = model.E_adi(x0);
-		vec rho_eq = exp(-(val-val(0))/kT) / accu( exp(-(val-val(0))/kT) );
-		cx_mat rho0 = zeros<cx_mat>(sz_rho, sz_rho);
-		rho0(0,0) = rho_eq(0);
-		rho0(1,1) = rho_eq(1);
-		uword state0 = (arma::randu() < rho_eq(0)) ? 0 : 1;
+		vec rho_eq = boltzmann(model.E(x0), kT);
+		cx_mat rho0 = zeros<cx_mat>(sz_elec, sz_elec);
+		rho0.diag() = conv_to<cx_vec>::from(rho_eq);
 
-		fssh.initialize(state0, x0, v0, rho0);
-		fssh.propagate();
+		uword state0 = 0;
+		vec P_cumu = cumsum(rho_eq);
+		double r = randu();
+		for (state0 = 0; state0 != sz_elec; ++state0) {
+			if (r < P_cumu(state0))	
+				break;
+		}
 
-		x_local.col(i) = fssh.x_t;
-		v_local.col(i) = fssh.v_t;
-		state_local.col(i) = fssh.state_t;
-		E_local.col(i) = fssh.E_t;
+		fssh_rlx.initialize(state0, x0, v0, rho0);
+		fssh_rlx.propagate();
+
+		x_local.col(i) = fssh_rlx.x_t;
+		v_local.col(i) = fssh_rlx.v_t;
+		state_local.col(i) = fssh_rlx.state_t;
+		E_local.col(i) = fssh_rlx.E_t;
 	}
 
 	gatherv(state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t);
@@ -160,10 +189,10 @@ int main(int, char**argv) {
 	if (id == 0) {
 		mkdir(savedir);
 		arma_save<raw_binary>( savedir,
-				state_t, "state.dat",
-				x_t, "x.dat",
-				v_t, "v.dat",
-				E_t, "E.dat",
+				state_t, "state_t.dat",
+				x_t, "x_t.dat",
+				v_t, "v_t.dat",
+				E_t, "E_t.dat",
 				time_grid, "t.dat"
 		);
 		sw.report();

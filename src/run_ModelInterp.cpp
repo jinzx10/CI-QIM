@@ -32,9 +32,9 @@ int main(int, char** argv) {
 
 		arma_load( readdir, 
 				xgrid, "xgrid.dat",
-				pes, "E_cisnd.dat",
+				pes, "E_adi.dat",
 				dc, "dc_adi.dat",
-				force, "F_cisnd.dat",
+				force, "F_adi.dat",
 				Gamma, "Gamma_rlx.dat"
 		);
 		sz_x = xgrid.n_elem;
@@ -42,7 +42,7 @@ int main(int, char** argv) {
 
 		pes.reshape(sz_elec, sz_x);
 		force.reshape(sz_elec, sz_x);
-		Gamma.reshape(sz_elec-1, sz_x);
+		Gamma.reshape(sz_elec, sz_x);
 		dc.reshape(sz_elec*sz_elec, sz_x);
 
 		std::cout << "data read successfully" << std::endl;
@@ -54,8 +54,7 @@ int main(int, char** argv) {
 
 	if (id != 0) {
 		set_size(sz_x, xgrid);
-		set_size(sz_elec, sz_x, pes, force);
-		set_size(sz_elec-1, sz_x, Gamma);
+		set_size(sz_elec, sz_x, pes, force, Gamma);
 		set_size(sz_elec*sz_elec, sz_x, dc);
 	}
 
@@ -69,8 +68,7 @@ int main(int, char** argv) {
 
 	if (id == 0) {
 		std::cout << "model initialized" << std::endl;
-		set_size(sz_elec, nx, pes_fine, force_fine);
-		set_size(sz_elec-1, nx, Gamma_fine);
+		set_size(sz_elec, nx, pes_fine, force_fine, Gamma_fine);
 		set_size(sz_elec*sz_elec, nx, dc_fine);
 		sw.run();
 	}
@@ -81,8 +79,7 @@ int main(int, char** argv) {
 		nx_local += 1;
 
 	mat pes_local, dc_local, force_local, Gamma_local;
-	set_size(sz_elec, nx_local, pes_local, force_local);
-	set_size(sz_elec-1, nx_local, Gamma_local);
+	set_size(sz_elec, nx_local, pes_local, force_local, Gamma_local);
 	set_size(sz_elec*sz_elec, nx_local, dc_local);
 
 	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
@@ -92,6 +89,15 @@ int main(int, char** argv) {
 		force_local.col(i) = model.F(x);
 		Gamma_local.col(i) = model.Gamma(x);
 		dc_local.col(i) = model.dc(x).as_col();
+
+		if (nprocs == 1) {
+			if (i == 0)
+				std::cout << std::endl << std::endl;
+			std::cout << "\033[A\033[2K\033[A\033[2K\r";
+		}
+
+		if (id == 0)
+			sw.report();
 
 		std::cout << "proc id = " << id 
 			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
@@ -105,12 +111,12 @@ int main(int, char** argv) {
 		mkdir(savedir);
 		arma_save<raw_binary>( savedir,
 				x_fine, "x_fine.dat",
-				pes_fine, "pes_fine.dat",
-				force_fine, "force_fine.dat",
+				pes_fine, "E_fine.dat",
+				force_fine, "F_fine.dat",
 				dc_fine, "dc_fine.dat",
 				Gamma_fine, "Gamma_fine.dat"
 		);
-		sw.report();
+		sw.report("total program");
 	}
 
 	MPI_Finalize();

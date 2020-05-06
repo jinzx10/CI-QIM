@@ -22,7 +22,7 @@ int main(int, char**argv) {
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
 	std::string file_path;
-	Parser<> p({"datadir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", "U", 
+	Parser p({"datadir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", "U", 
 			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width", 
 			"sz_sub"});
 	
@@ -63,6 +63,7 @@ int main(int, char**argv) {
 			<< "size of subspace adiabats = " << sz_sub << std::endl
 			<< std::endl;
 	}
+
 	bcast(x0_mpt, x0_fil, omega, mass, dE_fil, U, 
 			W, dos_base, hybrid, dox_base, dox_peak, dox_width, sz_sub);
 
@@ -121,17 +122,17 @@ int main(int, char**argv) {
 
 	// local variables and their initialization
 	vec E_mf_local, n_mf_local;
-	mat E_cisnd_local, n_cisnd_local, F_cisnd_local, Gamma_rlx_local;
+	mat E_adi_local, n_cisnd_local, F_adi_local, Gamma_rlx_local;
 	mat dc_adi_local;
 
 	set_size(nx_local, E_mf_local, n_mf_local);
-	set_size(sz_sub, nx_local, E_cisnd_local, n_cisnd_local, 
-			F_cisnd_local, Gamma_rlx_local);
+	set_size(sz_sub, nx_local, E_adi_local, n_cisnd_local, 
+			F_adi_local, Gamma_rlx_local);
 	set_size(sz_sub*sz_sub, nx_local, dc_adi_local);
 
 	// global variables (used by proc 0)
 	vec E_mf, n_mf;
-	mat E_cisnd, n_cisnd, F_cisnd;
+	mat E_adi, n_cisnd, F_adi;
 	mat dc_adi;
 	mat Gamma_rlx;
 
@@ -143,7 +144,7 @@ int main(int, char**argv) {
 
 	if (id == 0) {
 		set_size(nx, E_mf, n_mf);
-		set_size(sz_sub, nx, E_cisnd, n_cisnd, F_cisnd, Gamma_rlx);
+		set_size(sz_sub, nx, E_adi, n_cisnd, F_adi, Gamma_rlx);
 		set_size(sz_sub*sz_sub, nx, dc_adi);
 		sw.run(0);
 		std::cout << "model initialized" << std::endl;
@@ -155,9 +156,9 @@ int main(int, char**argv) {
 		
 		E_mf_local(i) = model.E_mf;
 		n_mf_local(i) = model.n_mf;
-		E_cisnd_local.col(i) = model.val_cisnd + model.E_nuc(x);
+		E_adi_local.col(i) = model.val_cisnd + model.E_nuc(x);
 		n_cisnd_local.col(i) = model.n_cisnd;
-		F_cisnd_local.col(i) = model.F_cisnd + model.F_nucl;
+		F_adi_local.col(i) = model.F_cisnd + model.F_nucl;
 		dc_adi_local.col(i) = model.dc_adi.as_col();
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 
@@ -175,8 +176,8 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_cisnd_local, E_cisnd, 
-			n_cisnd_local, n_cisnd, F_cisnd_local, F_cisnd,
+	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_adi_local, E_adi, 
+			n_cisnd_local, n_cisnd, F_adi_local, F_adi,
 			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx );
 
 	if (id == 0) {
@@ -185,9 +186,9 @@ int main(int, char**argv) {
 				xgrid, "xgrid.dat", 
 				E_mf, "E_mf.dat",
 				n_mf, "n_mf.dat",
-				E_cisnd, "E_cisnd.dat",
+				E_adi, "E_adi.dat",
 				n_cisnd, "n_cisnd.dat",
-				F_cisnd, "F_cisnd.dat",
+				F_adi, "F_adi.dat",
 				dc_adi, "dc_adi.dat",
 				Gamma_rlx, "Gamma_rlx.dat"
 		);

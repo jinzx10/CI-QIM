@@ -10,10 +10,11 @@ FSSH_rlx::FSSH_rlx(
 		double			const&		dtc_,
 		uword			const& 		ntc_,
 		double			const&		kT_,
-		double			const&		gamma_
+		double			const&		gamma_,
+		int				const&		velo_rev_
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
-	kT(kT_), gamma(gamma_), 
+	kT(kT_), gamma(gamma_), velo_rev(velo_rev_),
 	x(0), v(0), F_pes(0), 
 	sz_elec( model->sz_elec ), span_exc( span(1,sz_elec-1) ),
 	state(0), rho(zeros<cx_mat>(sz_elec, sz_elec)),
@@ -30,7 +31,7 @@ void FSSH_rlx::initialize(bool const& state0, double const& x0, double const& v0
 	state = state0;
 	rho = rho0;
 	E_adi = model->E(x);
-	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
+	rho_eq = boltzmann(E_adi, kT);
 	collect();
 }
 
@@ -130,25 +131,7 @@ void FSSH_rlx::hop() {
 	if ( fs == sz_elec ) // no hopping happens
 		return;
 
-	// various velocity-reversal schemes
-	int opt_velorev = 0; // default, standard velocity reversal
-	bool hop_from_dc = true; // used if PARTIAL_VELOCITY_REVERSAL is set
-
-#ifdef PARTIAL_VELOCITY_REVERSAL
-	opt_velorev = 1;
-	if (g(fs) < 0) {
-		hop_from_dc = false;
-	} else {
-		double dr = r - r_base;
-		if ( dr/P_hop(fs) > g(fs)/(g(fs)+q(fs)) )
-			hop_from_dc = false;
-	}
-#endif
-
-#ifdef NO_VELOCITY_REVERSAL
-	opt_velorev = 2;
-#endif
-
+	// hopping happens, check if frustrated or not
 	double dE = E_adi(fs) - E_adi(state);
 	if ( dE <= 0.5 * mass * v * v) { // successful hops
 		v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
@@ -156,7 +139,17 @@ void FSSH_rlx::hop() {
 		has_hop = true;
 	} else { // frustrated hops
 		num_frustrated_hops += 1;
-		if ( opt_velorev == 0 || (opt_velorev == 1 && hop_from_dc) ) {
+
+		// for frustrated hops, check if the velocity should be reversed
+		// various velocity-reversal schemes
+		// 0=standard   -1=no   1=partial
+		bool hop_from_dc = true; 
+		if (velo_rev == 1) {
+			if (g(fs) < 0 || (dr/P_hop(fs) > g(fs)/(g(fs)+q(fs))) )
+				hop_from_dc = false;
+		}
+
+		if ( velo_rev == 0 || (velo_rev == 1 && hop_from_dc) ) {
 			double F_tmp = model->F(x,fs);
 			if ( F_pes*F_tmp < 0 && F_tmp*v < 0  )
 				v = -v;

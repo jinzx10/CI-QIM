@@ -21,11 +21,11 @@ dc_fine  = np.fromfile(datadir+'dc_fine.dat')
 gamma_rlx = np.fromfile(datadir+'Gamma_rlx.dat')
 gamma_fine = np.fromfile(datadir+'Gamma_fine.dat')
 
-force = np.fromfile(datadir+'F_cisnd.dat')
-force_fine = np.fromfile(datadir+'force_fine.dat')
+force = np.fromfile(datadir+'F_adi.dat')
+force_fine = np.fromfile(datadir+'F_fine.dat')
 
-pes = np.fromfile(datadir+'E_cisnd.dat')
-pes_fine = np.fromfile(datadir+'pes_fine.dat')
+pes = np.fromfile(datadir+'E_adi.dat')
+pes_fine = np.fromfile(datadir+'E_fine.dat')
 
 nx = len(xgrid)
 nx_fine = len(x_fine)
@@ -52,8 +52,8 @@ plt.plot(xgrid, dc_adi[:,1])
 plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
 plt.subplot(num_fig_row, num_fig_col,3)
-plt.plot(xgrid, gamma_rlx[:,0])
-plt.plot(x_fine, gamma_fine[:,0],linestyle=':')
+plt.plot(xgrid, gamma_rlx[:,1])
+plt.plot(x_fine, gamma_fine[:,1],linestyle=':')
 
 plt.subplot(num_fig_row, num_fig_col,4)
 plt.plot(xgrid, pes[:,[0,1]])

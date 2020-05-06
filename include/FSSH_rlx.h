@@ -12,7 +12,8 @@ struct FSSH_rlx
 			double			const&		dtc_,
 			arma::uword		const& 		ntc_,
 			double			const& 		kT_,
-			double 			const& 		gamma_
+			double 			const& 		gamma_,
+			int				const&		velo_rev_
 	);
 
 	void						initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
@@ -37,6 +38,7 @@ struct FSSH_rlx
 	arma::uword		const 		ntc; // number of classical time steps
 	double			const		kT;
 	double 			const		gamma; // external phononic friction
+	int				const		velo_rev; // velocity reversal type
 
 	double						x;
 	double 						v;

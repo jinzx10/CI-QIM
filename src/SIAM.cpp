@@ -260,10 +260,15 @@ mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
 mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const& _vec_v, vec const& vec_do, mat const& vec_o, vec const& vec_dv, mat const& vec_v) {
 	uword n_occ = vec_o.n_cols + 1;
 	uword n_vir = vec_v.n_cols + 1;
+
 	uvec occ = range(0, n_occ-1);
 	uvec vir = range(n_occ, n_occ+n_vir-1);
+
 	uvec i = range(1, n_occ-1);
 	uvec j = range(1, n_occ-1);
+
+	uvec a = range(n_occ+1, n_occ+n_vir-1);
+
 	uvec d0 = uvec{0};
 	uvec dv = uvec{n_occ};
 
@@ -273,14 +278,14 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	///////////////////////////////////////////////////////////
 	//							M
 	///////////////////////////////////////////////////////////
-	// Mab
+	// M1
 	uvec p = cat(d0, vir);
 	uvec q = cat(d0, vir);
 	mat M1 = det(ovl(i,j)) * ( ovl(p,q) - ovl(p,j) * solve(ovl(i,j), ovl(i,p)) );
 
-	// Mij
-	p = cat(dv, i);
-	q = cat(dv, j);
+	// M2
+	p = cat(dv, occ);
+	q = cat(dv, occ);
 	mat Y = ovl(p,q);
 	Y.row(0) *= -1;
 	Y.col(0) *= -1;
@@ -288,54 +293,52 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 	// Maj
 	q = cat(dv, occ);
-	mat Z = ovl(i,q);
-	mat ns = null(Z);
+	mat Zt = ovl(i,q);
+	mat ns = null(Zt);
 	mat Ro = ovl(d0,q) * ns;
-	mat Ra = ovl(vir,q) * ns;
+	mat Ra = ovl(a,q) * ns;
 	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
 	mat v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
 	mat x = ns * join_cols(u.t(), v.t());
-	mat M3 = x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-		( det(ovl(occ,occ)) * ( ovl(vir,dv) - ovl(vir,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	mat Maj = det(ovl(occ,occ)) * ( 
+			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
 
 	// Mib
 	mat ovl2 = ovl.t();
 	q = cat(dv, occ);
-	Z = ovl2(i,q);
-	ns = null(Z);
+	Zt = ovl2(i,q);
+	ns = null(Zt);
 	Ro = ovl2(d0,q) * ns;
-	Ra = ovl2(vir,q) * ns;
+	Ra = ovl2(a,q) * ns;
 	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
 	v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
 	x = ns * join_cols(u.t(), v.t());
-	mat M4 = x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-		( det(ovl2(occ,occ)) * ( ovl2(vir,dv) - ovl2(vir,occ) * solve(ovl2(occ,occ), ovl2(occ,dv)) ) );
-	M4 = M4.t();
+	mat Mib = det(ovl2(occ,occ)) * (
+			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+			( ovl2(a,dv) - ovl2(a,occ) * solve(ovl2(occ,occ), ovl2(occ,dv)) ) );
+	Mib = Mib.t();
 
 	// individual M block
 	span r = span(2, M1.n_rows-1);
 	span c = span(2, M1.n_cols-1);
 	double M00 = M1(0,0);
 	double M01 = M1(0,1);
-	mat M0b = M1(0, c);
 	double M10 = M1(1,0);
 	double M11 = M1(1,1);
+	mat M0b = M1(0, c);
 	mat M1b = M1(1, c);
 	mat Ma0 = M1(r, 0);
 	mat Ma1 = M1(r, 1);
 	mat Mab = M1(r, c);
 
-	r = span(1, M2.n_rows-1);
-	c = span(1, M2.n_cols-1);
+	r = span(2, M2.n_rows-1);
+	c = span(2, M2.n_cols-1);
 	mat M0j = M2(0, c);
+	mat M1j = M2(1, c);
 	mat Mi0 = M2(r, 0);
+	mat Mi1 = M2(r, 1);
 	mat Mij = M2(r, c);
-
-	mat M1j = M3.row(0);
-	mat Maj = M3.tail_rows(M3.n_rows-1);
-
-	mat Mi1 = M4.col(0);
-	mat Mib = M4.tail_cols(M4.n_cols-1);
 
 
 	mat SA = join<mat>({
