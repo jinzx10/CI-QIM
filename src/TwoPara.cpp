@@ -28,9 +28,7 @@ TwoPara::TwoPara(
 	n_vir = n_bath + 1 - n_occ;
 	span_occ = span(0, n_occ-1);
 	span_vir = span(n_occ, n_bath);
-
-	// size of the selected subspace (ground state + selected CIS)
-	sz_slt = n_occ + n_vir; 
+	sz_cis = n_occ + n_vir - 1; // size of the selected CIS subspace
 
 	H = diagmat(join_cols(vec{0}, bath));
 	H(span(1, n_bath), 0) = cpl;
@@ -85,7 +83,6 @@ void TwoPara::calc_basic_elem() {
 }
 
 void TwoPara::solve_slt_cis() {
-
 	sp_mat H_dov_dov = conv_to<sp_mat>::from( vec{ev_H - H_dodo + H_dvdv} );
 	sp_mat H_dov_dob = conv_to<sp_mat>::from( H_dvb );
 	sp_mat H_dov_jdv = conv_to<sp_mat>::from( -H_doj );
@@ -100,7 +97,7 @@ void TwoPara::solve_slt_cis() {
 
 	eig_sym( val_slt_cis, vec_slt_cis, conv_to<mat>::from(H_slt_cis) );
 	val_slt_cis.resize(sz_sub-1);
-	vec_slt_cis.resize(sz_slt-1, sz_sub-1);
+	vec_slt_cis.resize(sz_cis, sz_sub-1);
 }
 
 vec TwoPara::E_bath() {
@@ -119,25 +116,24 @@ void TwoPara::calc_Gamma_rlx() {
 }
 
 vec TwoPara::E_sub() {
-	return join_cols( vec{ev_H}, val_slt_cis );
+	return join_cols( vec{ev_H}, val_slt_cis ) + E_nuc(x);
 }
 
 vec TwoPara::F_sub() {
-	return join_cols( vec{F_gnd}, F_slt_cis );
+	return join_cols( vec{F_gnd}, F_slt_cis ) - dE_nuc(x);;
 }
 
 void TwoPara::calc_force() {
-	F_gnd = - dE_imp(x) * ev_n - dE_nuc(x);
-	F_slt_cis = - (val_slt_cis - _val_slt_cis) / (x - _x) - dE_nuc(x);
+	F_gnd = - dE_imp(x) * ev_n;
+	F_slt_cis = - (val_slt_cis - _val_slt_cis) / (x - _x);
 }
 
 void TwoPara::calc_dc_adi() {
 	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, 
 			vec_do, vec_o, vec_dv, vec_v);
-	mat _coef = join_d<double>(vec{1.0}, _vec_slt_cis.head_cols(sz_sub-1));
-	mat coef = join_d<double>(vec{1.0}, vec_slt_cis.head_cols(sz_sub-1));
-
-	zeyu_sign(_coef, coef, S);
+	zeyu_sign(_vec_slt_cis, vec_slt_cis, S(span(1, sz_cis), span(1, sz_cis)));
+	mat _coef = join_d<double>(vec{1.0}, _vec_slt_cis);
+	mat coef = join_d<double>(vec{1.0}, vec_slt_cis);
 	dc_adi = calc_dc(_coef, coef, x-_x, S);
 }
 
@@ -300,9 +296,8 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Mi1 = M2(r, 1);
 	mat Mij = M2(r, c);
 
-
 	mat SB = join_c(M0j, M1j, Maj);
-	mat SC = join_r(Mi0, Mi1, Mib);
+	mat SC = join_r<mat>({Mi0, Mi1, Mib});
 
 	return join<mat>({{M1, SB}, {SC, Mij}});
 }

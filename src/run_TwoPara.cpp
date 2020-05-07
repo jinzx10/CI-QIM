@@ -89,7 +89,7 @@ int main(int, char** argv) {
 	
 	uword n_occ = n_bath / 2;
 	uword n_vir = n_bath + 1 - n_occ;
-	uword sz_cisnd = 2 * (n_occ + n_vir) - 1;
+	uword sz_cis = n_occ + n_vir - 1;
 
 	vec cpl = sqrt(hybrid/2.0/datum::pi/dos);
 
@@ -109,7 +109,7 @@ int main(int, char** argv) {
 	if (id == 0) {
 		std::cout << "diabatic crossing = " << xc << std::endl
 			<<"number of bath states = " << n_bath << std::endl 
-			<< "size of selective CISND basis = " << sz_cisnd << std::endl 
+			<< "size of selective CIS basis = " << sz_cis << std::endl 
 			<< "number of x grid points: " << nx << std::endl
 			<< "number of x grid points for proc-0: " << nx_local << std::endl
 			<< std::endl;
@@ -136,21 +136,20 @@ int main(int, char** argv) {
 	if (id == 0) {
 		set_size(nx, n_imp);
 		set_size(sz_sub, nx, E_adi, F_adi, Gamma_rlx);
-		set_size(sz_sub*sz_sub, dc_adi_local);
+		set_size(sz_sub*sz_sub, nx, dc_adi);
 		sw.run(0);
 		std::cout << "model initialized" << std::endl;
 	}
-
 
 
 	for (int i = 0; i != nx_local; ++i) {
 		double x = xgrid(idx_start+i);
 		model.set_and_calc(x);
 		
-		E_adi_local.col(i) = model.E_rel() + E_mpt(x);
-		F_adi_local.col(i) = model.F_rel();
-		dc_adi_local.col(i) = model.dc.as_col();
-		Gamma_rlx_local.col(i) = model.Gamma;
+		E_adi_local.col(i) = model.E_sub();
+		F_adi_local.col(i) = model.F_sub();
+		dc_adi_local.col(i) = model.dc_adi.as_col();
+		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 		n_imp_local(i) = model.ev_n;
 
 		if (nprocs == 1) {
@@ -170,6 +169,8 @@ int main(int, char** argv) {
 	gatherv( E_adi_local, E_adi, F_adi_local, F_adi, Gamma_rlx_local, Gamma_rlx, 
 			dc_adi_local, dc_adi, n_imp_local, n_imp);
 
+	std::fstream fs;
+	std::string paramfile;
 	if (id == 0) {
 		mkdir(datadir);
 		arma_save<raw_binary>( datadir,
@@ -180,6 +181,16 @@ int main(int, char** argv) {
 				Gamma_rlx, "Gamma_rlx.dat",
 				n_imp, "n_imp.dat"
 		);
+
+		paramfile = datadir+"param.txt";
+		touch(paramfile);
+
+		fs.open(paramfile);
+		fs << "omega " << omega << std::endl
+			<< "mass " << mass << std::endl
+			<< "x0_mpt " << x0_mpt << std::endl;
+		fs.close();
+
 		sw.report("total program");
 		std::cout << std::endl << std::endl << std::endl;
 	}

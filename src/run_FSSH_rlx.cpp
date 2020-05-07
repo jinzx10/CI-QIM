@@ -21,7 +21,7 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
-	std::string file_fssh, file_struc;
+	std::string input_file;
 	Parser p({"readdir", "savedir", "n_trajs", "t_max", "dtc", 
 			"velo_rev", "fric_mode", "kT"});
 
@@ -42,17 +42,35 @@ int main(int, char**argv) {
 	mat pes, force, Gamma, dc;
 	uword sz_x, sz_elec;
 
+	std::string paramfile;
 	if (id == 0) {
-		readargs(argv, file_fssh, file_struc);
+		readargs(argv, input_file);
 
-		p.parse(file_fssh);
+		p.parse(input_file);
 		p.pour(readdir, savedir, n_trajs, t_max, dtc, velo_rev, fric_mode, kT);
 
+		paramfile = readdir + "/param.txt";
 		p.reset({"omega", "mass", "x0_mpt"});
-		p.parse(file_struc);
+		p.parse(paramfile);
 		p.pour(omega, mass, x0_mpt);
 
-		std::cout << "data will be read from: " << readdir << std::endl
+		arma_load( readdir, 
+				xgrid, "xgrid.dat",
+				pes, "E_adi.dat",
+				force, "F_adi.dat",
+				Gamma, "Gamma_rlx.dat",
+				dc, "dc_adi.dat"
+		);
+
+		sz_x = xgrid.n_elem;
+		sz_elec = pes.n_elem / sz_x;
+
+		pes.reshape(sz_elec, sz_x);
+		force.reshape(sz_elec, sz_x);
+		Gamma.reshape(sz_elec, sz_x);
+		dc.reshape(sz_elec*sz_elec, sz_x);
+
+		std::cout << "data are read from: " << readdir << std::endl
 			<< "data will be saved to: " << savedir << std::endl
 			<< "# of trajectories = " << n_trajs << std::endl
 			<< "maximun time = " << t_max << std::endl
@@ -64,26 +82,8 @@ int main(int, char**argv) {
 			<< "omega = " << omega << std::endl
 			<< "mass = " << mass << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl
+			<< "size of electronic basis: " << sz_elec << std::endl
 			<< std::endl;
-
-		arma_load( readdir, 
-				xgrid, "xgrid.dat",
-				pes, "E.dat",
-				force, "F.dat",
-				Gamma, "Gamma.dat",
-				dc, "dc.dat"
-		);
-
-		sz_x = xgrid.n_elem;
-		sz_elec = pes.n_elem / sz_x;
-
-		pes.reshape(sz_elec, sz_x);
-		force.reshape(sz_elec, sz_x);
-		Gamma.reshape(sz_elec, sz_x);
-		dc.reshape(sz_elec*sz_elec, sz_x);
-
-		std::cout << "data read successfully" << std::endl;
-		std::cout << "size of electronic basis: " << sz_elec << std::endl;
 	}
 
 	bcast(n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
@@ -132,17 +132,20 @@ int main(int, char**argv) {
 
 	// local data
 	mat x_local, v_local, E_local;
-	umat state_local;
+	umat state_local, num_fhop_local;
 	set_size(ntc, n_trajs_local, x_local, v_local, state_local, E_local);
+	set_size(n_trajs_local, num_fhop_local);
 
 	// global data
 	mat x_t;
 	mat v_t;
-	umat state_t;
 	mat E_t;
+	umat state_t;
+	umat num_fhop;
 
 	if (id == 0) {
 		set_size(ntc, n_trajs, x_t, v_t, state_t, E_t);
+		set_size(n_trajs, num_fhop);
 		sw.run();
 	}
 
@@ -179,9 +182,24 @@ int main(int, char**argv) {
 		v_local.col(i) = fssh_rlx.v_t;
 		state_local.col(i) = fssh_rlx.state_t;
 		E_local.col(i) = fssh_rlx.E_t;
+		num_fhop_local(i) = fssh_rlx.num_frustrated_hops;
+
+		if (nprocs == 1) {
+			if (i == 0)
+				std::cout << std::endl << std::endl;
+			std::cout << "\033[A\033[2K\033[A\033[2K\r";
+		}
+
+		if (id == 0)
+			sw.report();
+
+		std::cout << "proc id = " << id 
+			<< "   local task: " << (i+1) << "/" << n_trajs_local << " finished"
+			<< std::endl;
 	}
 
-	gatherv(state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t);
+	gatherv(state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t,
+			num_fhop_local, num_fhop);
 
 	////////////////////////////////////////////////////////////
 	//					save data
@@ -193,9 +211,10 @@ int main(int, char**argv) {
 				x_t, "x_t.dat",
 				v_t, "v_t.dat",
 				E_t, "E_t.dat",
+				num_fhop, "num_fhop.dat",
 				time_grid, "t.dat"
 		);
-		sw.report();
+		sw.report("program end");
 	}
 
 	MPI_Finalize();

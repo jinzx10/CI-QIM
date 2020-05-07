@@ -31,25 +31,25 @@ struct SIAM
 
 	// orbital rotation
 	void				rotate_orb();
-	double				Fdodo;
-	double 				Fdvdv;
+	double				F_dodo;
+	double 				F_dvdv;
 	arma::vec			vec_do;
 	arma::vec			vec_dv;
 	arma::mat			vec_o; // occupied bath orbitals
 	arma::mat			vec_v; // virtual bath orbitals
-	arma::sp_mat		Fij; // diagonal 
-	arma::sp_mat 		Fab; // diagonal
+	arma::sp_mat		F_ij; // diagonal 
+	arma::sp_mat 		F_ab; // diagonal
 
 	// adjust sign
 	void				adj_orb_sign();
 
 	// basic elements for matrix
 	void				calc_basic_elem();
-	double				Pdodo;
-	double				Pdvdv;
-	double				Pdodv;
-	arma::mat			Fdvb;
-	arma::mat			Fdoj;
+	double				P_dodo;
+	double				P_dvdv;
+	double				P_dodv;
+	arma::mat			F_dvb;
+	arma::mat			F_doj;
 
 	// selective CIS-ND
 	void				solve_cisnd();

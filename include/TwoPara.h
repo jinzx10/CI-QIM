@@ -33,7 +33,7 @@ struct TwoPara
 	arma::uword 		n_vir;
 	arma::span			span_occ;
 	arma::span 			span_vir;
-	arma::uword			sz_slt;
+	arma::uword			sz_cis;
 
 	arma::uword			sz_sub;
 

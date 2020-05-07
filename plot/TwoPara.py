@@ -2,64 +2,68 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import os
 
+switch_fine = False
+
 #rootdir = '/home/zuxin/job/CI-QIM/'
 filedir=os.path.dirname(os.path.abspath(__file__))
-datadir=filedir+'/../data/TwoPara/Gamma/0.0008/'
+datadir=filedir+'/../data/TwoPara/test/'
 
-num_figs = 5 
-switch_dc_exact = False
-
+num_fig_row = 2
+num_fig_col = 3
 
 xgrid = np.fromfile(datadir+'xgrid.dat')
-E0 = np.fromfile(datadir+'E0.dat')
-E1 = np.fromfile(datadir+'E1.dat')
-F0 = np.fromfile(datadir+'F0.dat')
-F1 = np.fromfile(datadir+'F1.dat')
-Gamma = np.fromfile(datadir+'Gamma.dat')
 n_imp = np.fromfile(datadir+'n_imp.dat')
-dc01x = np.fromfile(datadir+'dc01x.dat')
+dc_adi = np.fromfile(datadir+'dc_adi.dat')
+gamma_rlx = np.fromfile(datadir+'Gamma_rlx.dat')
+force = np.fromfile(datadir+'F_adi.dat')
+pes = np.fromfile(datadir+'E_adi.dat')
 
-if switch_dc_exact:
-    dc01 = np.fromfile(datadir+'dc01.dat')
 
-#xfine = np.fromfile('./x_fine.dat')
-#E0_fine = np.fromfile('./E0_fine.dat')
-#E1_fine = np.fromfile('./E1_fine.dat')
-#F0_fine = np.fromfile('./F0_fine.dat')
-#F1_fine = np.fromfile('./F1_fine.dat')
-#Gamma_fine = np.fromfile('./Gamma_fine.dat')
-#dc01_fine = np.fromfile('./dc01_fine.dat')
+nx = len(xgrid)
 
-plt.subplot(1,num_figs,1)
-plt.plot(xgrid, E0) 
-plt.plot(xgrid, E1) 
-#plt.plot(xfine, E0_fine, linestyle='dotted')
-#plt.plot(xfine, E1_fine, linestyle='dotted')
+dc_adi = np.reshape(dc_adi, (nx,-1))
+gamma_rlx = np.reshape(gamma_rlx, (nx,-1))
+pes = np.reshape(pes, (nx,-1))
+force = np.reshape(force, (nx,-1))
 
-plt.subplot(1,num_figs,2)
-plt.plot(xgrid, n_imp)
+if switch_fine:
+    x_fine = np.fromfile(datadir+'x_fine.dat')
+    dc_fine  = np.fromfile(datadir+'dc_fine.dat')
+    pes_fine = np.fromfile(datadir+'E_fine.dat')
+    force_fine = np.fromfile(datadir+'F_fine.dat')
+    gamma_fine = np.fromfile(datadir+'Gamma_fine.dat')
 
-plt.subplot(1,num_figs,3)
-plt.plot(xgrid, Gamma)
-#plt.plot(xfine, Gamma_fine, linestyle='dotted')
+    nx_fine = len(x_fine)
+    dc_fine = np.reshape(dc_fine, (nx_fine,-1))
+    gamma_fine = np.reshape(gamma_fine, (nx_fine,-1))
+    force_fine = np.reshape(force_fine, (nx_fine,-1))
+    pes_fine = np.reshape(pes_fine, (nx_fine,-1))
 
-plt.subplot(1,num_figs,4)
-plt.plot(xgrid, F0) 
-plt.plot(xgrid, F1) 
-f_dx_0 = -(E0[1:]-E0[0:-1]) / (xgrid[1:]-xgrid[0:-1])
-f_dx_1 = -(E1[1:]-E1[0:-1]) / (xgrid[1:]-xgrid[0:-1])
-plt.plot(xgrid[1:], f_dx_0)
-plt.plot(xgrid[1:], f_dx_1)
-#plt.plot(xfine, F0_fine, linestyle='dotted')
-#plt.plot(xfine, F1_fine, linestyle='dotted')
+plt.subplot(num_fig_row, num_fig_col,1)
+plt.plot(xgrid, n_imp) 
 
-plt.subplot(1, num_figs, 5)
-plt.plot(xgrid, np.abs(dc01x))
+plt.subplot(num_fig_row, num_fig_col,2)
+plt.plot(xgrid, dc_adi[:,1]) 
+if switch_fine:
+    plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
-if switch_dc_exact:
-    plt.plot(xgrid, np.abs(dc01), linestyle=':')
-    print(np.linalg.norm(np.abs(dc01x) - np.abs(dc01) ))
-#plt.plot(xfine, dc01_fine, linestyle='dotted')
+plt.subplot(num_fig_row, num_fig_col,3)
+plt.plot(xgrid, gamma_rlx[:,1])
+if switch_fine:
+    plt.plot(x_fine, gamma_fine[:,1],linestyle=':')
+
+plt.subplot(num_fig_row, num_fig_col,4)
+plt.plot(xgrid, pes[:,[0,1]])
+if switch_fine:
+    plt.plot(x_fine,pes_fine[:,[0,1]],linestyle='--')
+
+plt.subplot(num_fig_row, num_fig_col,5)
+plt.plot(xgrid, force[:,[0,1]])
+f_fd = (pes[0:-1,[0,1]]-pes[1:,[0,1]])/np.reshape(xgrid[1:]-xgrid[0:-1],(-1,1))
+plt.plot(xgrid[1:],f_fd, linestyle=':')
+if switch_fine:
+    plt.plot(x_fine, force_fine[:,[0,1]],linestyle='--')
+
 
 plt.show()
 

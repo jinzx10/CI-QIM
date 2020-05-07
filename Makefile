@@ -29,7 +29,10 @@ SIAM_deps_h 			= arma_helper math_helper
 ModelInterp_deps		=
 ModelInterp_deps_h		= math_helper
 
-executables	 	= $(addprefix ${BDIR}/run_, TwoPara TwoPara2 FSSH Langevin SIAM ModelInterp)
+FSSH_rlx_deps 			= ModelInterp
+FSSH_rlx_deps_h 		= arma_helper math_helper
+
+executables	 	= $(addprefix ${BDIR}/run_, TwoPara TwoPara2 FSSH Langevin SIAM ModelInterp FSSH_rlx)
 obj_run 		= $(patsubst ${BDIR}/%, ${ODIR}/%.o, ${executables})
 gen_obj 		= $(patsubst %, ${ODIR}/%.o, $(1))
 gen_hdr 		= $(patsubst %, ${IDIR}/%.h, $(1))

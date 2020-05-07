@@ -1,0 +1,9 @@
+readdir /home/zuxin/job/CI-QIM/data/SIAM/test/
+savedir /home/zuxin/job/CI-QIM/data/SIAM/test/
+n_trajs 20
+t_max 1.5e6
+dtc 15
+velo_rev 0
+fric_mode 0
+kT 0.001                  
+

@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <string>
+#include <fstream>
 #include "mpi_helper.h"
 #include "widgets.h"
 #include "math_helper.h"
@@ -180,6 +181,8 @@ int main(int, char**argv) {
 			n_cisnd_local, n_cisnd, F_adi_local, F_adi,
 			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx );
 
+	std::fstream fs;
+	std::string paramfile;
 	if (id == 0) {
 		mkdir(datadir);
 		arma_save<raw_binary>( datadir,
@@ -192,6 +195,16 @@ int main(int, char**argv) {
 				dc_adi, "dc_adi.dat",
 				Gamma_rlx, "Gamma_rlx.dat"
 		);
+
+		paramfile = datadir+"param.txt";
+		touch(paramfile);
+
+		fs.open(paramfile);
+		fs << "omega " << omega << std::endl
+			<< "mass " << mass << std::endl
+			<< "x0_mpt " << x0_mpt << std::endl;
+		fs.close();
+
 		sw.report("program end");
 		std::cout << std::endl << std::endl << std::endl; 
 	}

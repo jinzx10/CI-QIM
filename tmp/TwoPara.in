@@ -1,0 +1,13 @@
+datadir /home/zuxin/job/CI-QIM/data/TwoPara/test/
+x0_mpt 0
+x0_fil 20.6097
+omega 0.0004
+mass 2000
+dE_fil -0.0038
+W 0.2
+dos_base 1000
+hybrid 0.006
+dox_base  5
+dox_peak 30
+dox_width 5
+sz_sub 3
