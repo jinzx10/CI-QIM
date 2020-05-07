@@ -182,7 +182,7 @@ int main(int, char** argv) {
 				n_imp, "n_imp.dat"
 		);
 
-		paramfile = datadir+"param.txt";
+		paramfile = datadir+"/param.txt";
 		touch(paramfile);
 
 		fs.open(paramfile);
