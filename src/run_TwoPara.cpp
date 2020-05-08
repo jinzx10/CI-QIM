@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <string>
+#include <stdlib.h>
 #include "TwoPara.h"
 #include "mpi_helper.h"
 #include "arma_helper.h"
@@ -46,6 +47,8 @@ int main(int, char** argv) {
 		p.parse(file_path);
 		p.pour(datadir, x0_mpt, x0_fil, omega, mass, dE_fil,
 				W, dos_base, hybrid, dox_base, dox_peak, dox_width, sz_sub);
+
+		datadir = expand_leading_tilde(datadir);
 
 		std::cout << "data will be saved to: " << datadir << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl

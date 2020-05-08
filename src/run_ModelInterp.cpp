@@ -27,8 +27,11 @@ int main(int, char** argv) {
 	if (id == 0) {
 		readargs(argv, readdir, savedir);
 
+		readdir = expand_leading_tilde(readdir);
+		savedir = expand_leading_tilde(savedir);
+
 		std::cout << "read data from " << readdir << std::endl;
-		std::cout << "save data to " << readdir << std::endl;
+		std::cout << "save data to " << savedir << std::endl;
 
 		arma_load( readdir, 
 				xgrid, "xgrid.dat",

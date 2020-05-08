@@ -49,6 +49,9 @@ int main(int, char**argv) {
 		p.parse(input_file);
 		p.pour(readdir, savedir, n_trajs, t_max, dtc, velo_rev, fric_mode, kT);
 
+		readdir = expand_leading_tilde(readdir);
+		savedir = expand_leading_tilde(savedir);
+
 		paramfile = readdir + "/param.txt";
 		p.reset({"omega", "mass", "x0_mpt"});
 		p.parse(paramfile);

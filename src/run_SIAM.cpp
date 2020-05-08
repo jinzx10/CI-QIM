@@ -48,6 +48,8 @@ int main(int, char**argv) {
 		p.pour(datadir, x0_mpt, x0_fil, omega, mass, dE_fil, U, 
 				W, dos_base, hybrid, dox_base, dox_peak, dox_width, sz_sub);
 
+		datadir = expand_leading_tilde(datadir);
+
 		std::cout << "data will be saved to: " << datadir << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl
 			<< "x0_fil = " << x0_fil << std::endl
