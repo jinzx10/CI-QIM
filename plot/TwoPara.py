@@ -4,7 +4,6 @@ import os
 
 switch_fine = False
 
-#rootdir = '/home/zuxin/job/CI-QIM/'
 filedir=os.path.dirname(os.path.abspath(__file__))
 datadir=filedir+'/../data/TwoPara/test/'
 

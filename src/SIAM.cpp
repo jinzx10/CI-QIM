@@ -76,7 +76,7 @@ void SIAM::solve_mf() {
 	auto dn = [this] (double const& n) { return n2n(n) - n; };
 	newtonroot(dn, n_mf);
 	eig_sym( val_mf, vec_mf, F() );
-	E_mf = accu(val_mf(span_occ)) - U * n_mf * n_mf;
+	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
 }
 
 void SIAM::rotate_orb() {
