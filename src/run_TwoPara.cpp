@@ -25,7 +25,7 @@ int main(int, char** argv) {
 	std::string file_path;
 	Parser p({"datadir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", 
 			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width", 
-			"sz_sub"});
+			"sz_sub", "left_wall", "right_wall"});
 
 	std::string datadir;
 	double dos_base = 0.0;
@@ -40,13 +40,15 @@ int main(int, char** argv) {
 	double dE_fil = 0.0;
 	double W = 0.0;
 	uword sz_sub = 0;
-
+	double left_wall = 0.0;
+	double right_wall = 0.0;
 
 	if (id == 0) {
 		readargs(argv, file_path);
 		p.parse(file_path);
 		p.pour(datadir, x0_mpt, x0_fil, omega, mass, dE_fil,
-				W, dos_base, hybrid, dox_base, dox_peak, dox_width, sz_sub);
+				W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
+				sz_sub, left_wall, right_wall);
 
 		datadir = expand_leading_tilde(datadir);
 
@@ -67,7 +69,8 @@ int main(int, char** argv) {
 	}
 
 	bcast(x0_mpt, x0_fil, omega, mass, dE_fil,
-			W, dos_base, hybrid, dox_base, dox_peak, dox_width, sz_sub);
+			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
+			sz_sub, left_wall, right_wall);
 
 	////////////////////////////////////////////////////////////
 	//					Two-Parabola model
@@ -101,7 +104,7 @@ int main(int, char** argv) {
 		return dox_base + dox_peak * gauss(x, xc, dox_width);
 	};
 
-	vec xgrid = grid(2.0*x0_mpt-xc, 2.0*x0_fil-xc, density);
+	vec xgrid = grid(x0_mpt-left_wall*(xc-x0_mpt), x0_fil+right_wall*(x0_fil-xc), density);
 	uword nx = xgrid.n_elem;
 
 	int nx_local = nx / nprocs;
@@ -111,10 +114,12 @@ int main(int, char** argv) {
 
 	if (id == 0) {
 		std::cout << "diabatic crossing = " << xc << std::endl
-			<<"number of bath states = " << n_bath << std::endl 
+			<< "number of bath states = " << n_bath << std::endl 
 			<< "size of selective CIS basis = " << sz_cis << std::endl 
 			<< "number of x grid points: " << nx << std::endl
 			<< "number of x grid points for proc-0: " << nx_local << std::endl
+			<< "minimum on-site energy: " << E_imp(xgrid(nx-1)) << std::endl
+			<< "maximum on-site energy: " << E_imp(xgrid(0)) << std::endl
 			<< std::endl;
 	}
 

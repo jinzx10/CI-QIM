@@ -233,8 +233,6 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	uvec vir = range(n_occ, n_occ+n_vir-1);
 
 	uvec i = range(1, n_occ-1);
-	uvec j = range(1, n_occ-1);
-
 	uvec a = range(n_occ+1, n_occ+n_vir-1);
 
 	uvec d0 = uvec{0};
@@ -247,35 +245,26 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	//							M
 	///////////////////////////////////////////////////////////
 	// M1
-	uvec p = cat(d0, vir);
-	uvec q = cat(d0, vir);
-	mat M1 = det(ovl(i,j)) * ( ovl(p,q) - ovl(p,j) * solve(ovl(i,j), ovl(i,p)) );
+	mat M1 = det(ovl(i,i)) * ( ovl(cat(d0, vir), cat(d0, vir)) - 
+			ovl(cat(d0, vir),i) * solve(ovl(i,i), ovl(i, cat(d0, vir))) );
 
 	// M2
-	p = cat(dv, occ);
-	q = cat(dv, occ);
-	mat Y = ovl(p,q);
+	mat Y = ovl(cat(dv, occ), cat(dv, occ));
 	Y.row(0) *= -1;
 	Y.col(0) *= -1;
 	mat M2 = det(Y) * inv(Y).t();
+	Y.clear();
 
 	// Maj
-	q = cat(dv, occ);
-	mat Zt = ovl(i,q);
-	//Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
-	mat ns = null(Zt);
-
-	/*
 	mat ns;
-	bool status = null(ns, Zt);
+	bool status = null(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
-		Zt.save("/data/home/jinzx10/Zt.dat", raw_ascii);
+		ovl(i, cat(dv, occ)).eval().save("/data/home/jinzx10/Zt.dat", raw_ascii);
 		exit(EXIT_FAILURE);
 	}
-	*/
 
-	mat Ro = ovl(d0,q) * ns;
-	mat Ra = ovl(a,q) * ns;
+	mat Ro = ovl(d0, cat(dv, occ)) * ns;
+	mat Ra = ovl(a, cat(dv, occ)) * ns;
 	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
 	mat v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
 	mat x = ns * join_cols(u.t(), v.t());
@@ -284,42 +273,30 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
 
 	// Mib
-	mat ovl2 = ovl.t();
-	q = cat(dv, occ);
-	Zt = ovl2(i,q);
-	//Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
-	ns = null(Zt);
-
-	/*
-	status = null(ns, Zt);
+	inplace_trans(ovl);
+	status = null(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
-		Zt.save("/data/home/jinzx10/Zt.dat", raw_ascii);
+		ovl(i, cat(dv, occ)).eval().save("/data/home/jinzx10/Zt.dat", raw_ascii);
 		exit(EXIT_FAILURE);
 	}
-	*/
 
-	Ro = ovl2(d0,q) * ns;
-	Ra = ovl2(a,q) * ns;
+	Ro = ovl(d0, cat(dv, occ)) * ns;
+	Ra = ovl(a, cat(dv, occ)) * ns;
 	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
 	v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
 	x = ns * join_cols(u.t(), v.t());
-	mat Mib = det(ovl2(occ,occ)) * (
+	mat Mib = det(ovl(occ,occ)) * (
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-			( ovl2(a,dv) - ovl2(a,occ) * solve(ovl2(occ,occ), ovl2(occ,dv)) ) );
-	Mib = Mib.t();
+			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	inplace_trans(Mib);
 
 	// individual M block
 	span r = span(2, M2.n_rows-1);
 	span c = span(2, M2.n_cols-1);
-	mat M0j = M2(0, c);
-	mat M1j = M2(1, c);
-	mat Mi0 = M2(r, 0);
-	mat Mi1 = M2(r, 1);
-	mat Mij = M2(r, c);
 
-	mat SB = join_c(M0j, M1j, Maj);
-	mat SC = join_r<mat>({Mi0, Mi1, Mib});
+	mat SB = join_cols(M2(span(0,1), c), Maj);
+	mat SC = join_rows(M2(r, span(0,1)), Mib);
 
-	return join<mat>({{M1, SB}, {SC, Mij}});
+	return join<mat>({{M1, SB}, {SC, M2(r,c)}});
 }
 

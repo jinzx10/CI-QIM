@@ -11,3 +11,5 @@ dox_base  5
 dox_peak 30
 dox_width 5
 sz_sub 3
+left_wall 3
+right_wall 2

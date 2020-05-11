@@ -1,11 +1,14 @@
+#!/opt/python/3.6/bin/python3
+
 import numpy as np
 import matplotlib.pyplot as plt 
 import os
+import sys
 
 switch_fine = False
 
 filedir=os.path.dirname(os.path.abspath(__file__))
-datadir=filedir+'/../data/TwoPara/hybrid_Gamma/0.0004/'
+datadir=filedir+'/../data/'+sys.argv[1]+'/'
 
 num_fig_row = 2
 num_fig_col = 3
@@ -42,7 +45,7 @@ plt.subplot(num_fig_row, num_fig_col,1)
 plt.plot(xgrid, n_imp) 
 
 plt.subplot(num_fig_row, num_fig_col,2)
-plt.plot(xgrid, dc_adi[:,1]) 
+plt.plot(xgrid, abs(dc_adi[:,1])) 
 if switch_fine:
     plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
