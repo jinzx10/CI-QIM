@@ -5,7 +5,7 @@ import os
 switch_fine = False
 
 filedir=os.path.dirname(os.path.abspath(__file__))
-datadir=filedir+'/../data/TwoPara/test/'
+datadir=filedir+'/../data/TwoPara/hybrid_Gamma/0.0004/'
 
 num_fig_row = 2
 num_fig_col = 3

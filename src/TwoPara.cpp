@@ -262,8 +262,18 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	// Maj
 	q = cat(dv, occ);
 	mat Zt = ovl(i,q);
-	Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
+	//Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
 	mat ns = null(Zt);
+
+	/*
+	mat ns;
+	bool status = null(ns, Zt);
+	if (!status) {
+		Zt.save("/data/home/jinzx10/Zt.dat", raw_ascii);
+		exit(EXIT_FAILURE);
+	}
+	*/
+
 	mat Ro = ovl(d0,q) * ns;
 	mat Ra = ovl(a,q) * ns;
 	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
@@ -277,8 +287,17 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat ovl2 = ovl.t();
 	q = cat(dv, occ);
 	Zt = ovl2(i,q);
-	Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
+	//Zt = join_rows(Zt.tail_cols(Zt.n_cols-2), Zt.head_cols(2));
 	ns = null(Zt);
+
+	/*
+	status = null(ns, Zt);
+	if (!status) {
+		Zt.save("/data/home/jinzx10/Zt.dat", raw_ascii);
+		exit(EXIT_FAILURE);
+	}
+	*/
+
 	Ro = ovl2(d0,q) * ns;
 	Ra = ovl2(a,q) * ns;
 	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );

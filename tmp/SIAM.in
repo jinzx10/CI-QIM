@@ -1,7 +1,7 @@
 datadir ~/job/CI-QIM/data/SIAM/test/
 x0_mpt 0
 x0_fil 20.6097
-omega 0.0004
+omega 0.0002
 mass 2000
 dE_fil -0.0038
 U 0.05
