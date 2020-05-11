@@ -202,4 +202,31 @@ inline arma::rowvec lininterp(double const& x0, arma::vec const& x, arma::mat co
 }
 
 
+inline bool null_qr(arma::mat& ns, arma::mat const& A) {
+    if (A.is_empty()) {
+        ns.clear();
+        return true;
+    }
+
+    arma::mat q, r;
+    bool status = arma::qr(q, r, A.t());
+    if (status) {
+        arma::vec s = arma::sum(arma::abs(r), 1);
+        double tol = arma::datum::eps * std::max(A.n_rows, A.n_cols);
+        ns = q.cols(arma::find(s<tol));
+    }
+    return status;
+}
+
+inline arma::mat null_qr(arma::mat const& A) {
+	arma::mat ns;
+	bool status = null_qr(ns, A);
+	if (!status) {
+		std::cout << "null_qr(): qr decomposition failed." << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	return ns;
+}
+
+
 #endif

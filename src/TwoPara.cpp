@@ -258,7 +258,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 	// Maj
 	mat ns;
-	bool status = null(ns, ovl(i, cat(dv, occ)));
+	bool status = null_qr(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
 		std::cout << "Maj: null failed" << std::endl;
 		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
@@ -267,16 +267,16 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 	mat Ro = ovl(d0, cat(dv, occ)) * ns;
 	mat Ra = ovl(a, cat(dv, occ)) * ns;
-	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
-	mat v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
-	mat x = ns * join_cols(u.t(), v.t());
+	mat x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
+
 	mat Maj = det(ovl(occ,occ)) * ( 
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
 			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
 
 	// Mib
 	inplace_trans(ovl);
-	status = null(ns, ovl(i, cat(dv, occ)));
+	status = null_qr(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
 		std::cout << "Mib: null failed" << std::endl;
 		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
@@ -285,9 +285,8 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 	Ro = ovl(d0, cat(dv, occ)) * ns;
 	Ra = ovl(a, cat(dv, occ)) * ns;
-	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
-	v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
-	x = ns * join_cols(u.t(), v.t());
+	x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
 	mat Mib = det(ovl(occ,occ)) * (
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
 			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
