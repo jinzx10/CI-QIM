@@ -1,4 +1,4 @@
-#!/opt/python/3.6/bin/python3
+#!/usr/bin/env python3
 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -8,7 +8,7 @@ import sys
 switch_fine = False
 
 filedir=os.path.dirname(os.path.abspath(__file__))
-datadir=filedir+'/../data/'+sys.argv[1]+'/'
+datadir=filedir+'/../data/TwoPara/hybrid_Gamma/'+sys.argv[1]+'/'
 
 num_fig_row = 2
 num_fig_col = 3
