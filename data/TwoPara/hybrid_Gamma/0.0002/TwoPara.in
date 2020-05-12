@@ -1,0 +1,15 @@
+datadir /work/jinzx10/TwoPara//data/TwoPara/hybrid_Gamma/0.0002
+x0_mpt 0
+x0_fil 20.6097
+omega 0.0002
+mass 2000
+dE_fil -0.0038
+W 0.2
+dos_base 10000
+hybrid 0.0002
+dox_base 5
+dox_peak 200
+dox_width 0.7
+sz_sub 30
+left_wall 3
+right_wall 2
