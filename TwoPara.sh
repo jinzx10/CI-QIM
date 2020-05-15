@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #PBS -N run_TwoPara
-#PBS -l nodes=1:ppn=48
-#PBS -q n7
+#PBS -l nodes=1:ppn=1
+#PBS -q batch
 #PBS -l walltime=24:00:00
 #PBS -j oe
-#PBS -o /home/jinzx10/job/CI-QIM/log/TwoPara-n7.out
+#PBS -o /home/jinzx10/job/CI-QIM/log/TwoPara.out
 
 JOBROOT=/home/jinzx10/job/CI-QIM/
 cd ${JOBROOT}
@@ -15,7 +15,7 @@ HYBRID=(   0.0128  0.0064  0.0032  0.0016  0.0008  0.0004  0.0002  0.0001  0.000
 DOX_PEAK=( 20      30      40      60      100     140     200     300     450      700)
 DOX_WIDTH=(5       4       3       2       1.4     1       0.7     0.5     0.3      0.2)
 
-for i in {8..8}
+for i in {4..4}
 do
 	SAVEDIR=${JOBROOT}/data/TwoPara/hybrid_Gamma/${HYBRID[i]}
 	mkdir -p ${SAVEDIR}
@@ -32,5 +32,5 @@ do
 	touch ${SAVEDIR}/run.log
 	echo $(date) >> ${SAVEDIR}/run.log
 
-	mpirun -np 24 ${JOBROOT}/bin/run_TwoPara ${SAVEDIR}/TwoPara.in >> ${SAVEDIR}/run.log 2>&1
+	mpirun -np 1 ${JOBROOT}/bin/run_TwoPara ${SAVEDIR}/TwoPara.in >> ${SAVEDIR}/run.log 2>&1
 done

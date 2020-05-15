@@ -45,7 +45,9 @@ plt.subplot(num_fig_row, num_fig_col,1)
 plt.plot(xgrid, n_imp) 
 
 plt.subplot(num_fig_row, num_fig_col,2)
-plt.plot(xgrid, abs(dc_adi[:,1])) 
+plt.plot(xgrid, dc_adi[:,1]) 
+plt.plot(xgrid, dc_adi[:,2]) 
+plt.plot(xgrid, dc_adi[:,3]) 
 if switch_fine:
     plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
