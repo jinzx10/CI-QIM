@@ -133,8 +133,8 @@ void TwoPara::calc_dc_adi() {
 	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, 
 			vec_do, vec_o, vec_dv, vec_v);
 	zeyu_sign(_vec_slt_cis, vec_slt_cis, S(span(1, sz_cis), span(1, sz_cis)));
-	mat _coef = join_d<double>(vec{1.0}, _vec_slt_cis);
-	mat coef = join_d<double>(vec{1.0}, vec_slt_cis);
+	mat _coef = join_d(vec{1.0}, _vec_slt_cis);
+	mat coef = join_d(vec{1.0}, vec_slt_cis);
 	dc_adi = calc_dc(_coef, coef, x-_x, S);
 }
 

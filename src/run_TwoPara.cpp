@@ -12,6 +12,7 @@ using namespace arma;
 int main(int, char** argv) {
 
 	int id, nprocs;
+	int root = 0;
 
 	::MPI_Init(nullptr, nullptr);
 	::MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -23,11 +24,11 @@ int main(int, char** argv) {
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
 	std::string file_path;
-	Parser p({"datadir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", 
+	Parser p({"savedir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", 
 			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width", 
 			"sz_sub", "left_wall", "right_wall"});
 
-	std::string datadir;
+	std::string savedir;
 	double dos_base = 0.0;
 	double hybrid = 0.0;
 	double dox_base = 0.0;
@@ -43,16 +44,18 @@ int main(int, char** argv) {
 	double left_wall = 0.0;
 	double right_wall = 0.0;
 
-	if (id == 0) {
+	if (id == root) {
 		readargs(argv, file_path);
 		p.parse(file_path);
-		p.pour(datadir, x0_mpt, x0_fil, omega, mass, dE_fil,
+		p.pour(savedir, x0_mpt, x0_fil, omega, mass, dE_fil,
 				W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
 				sz_sub, left_wall, right_wall);
 
-		datadir = expand_leading_tilde(datadir);
+		std::cout << savedir << std::endl;
 
-		std::cout << "data will be saved to: " << datadir << std::endl
+		savedir = expand_leading_tilde(savedir);
+
+		std::cout << "data will be saved to: " << savedir << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl
 			<< "x0_fil = " << x0_fil << std::endl
 			<< "omega = " << omega << std::endl
@@ -68,7 +71,7 @@ int main(int, char** argv) {
 			<< std::endl;
 	}
 
-	bcast(x0_mpt, x0_fil, omega, mass, dE_fil,
+	bcast(root, x0_mpt, x0_fil, omega, mass, dE_fil,
 			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
 			sz_sub, left_wall, right_wall);
 
@@ -107,12 +110,12 @@ int main(int, char** argv) {
 	vec xgrid = grid(x0_mpt-left_wall*(xc-x0_mpt), x0_fil+right_wall*(x0_fil-xc), density);
 	uword nx = xgrid.n_elem;
 
-	int nx_local = nx / nprocs;
+	uword nx_local = nx / nprocs;
 	int rem = nx % nprocs;
 	if (id < rem)
 		nx_local += 1;
 
-	if (id == 0) {
+	if (id == root) {
 		std::cout << "diabatic crossing = " << xc << std::endl
 			<< "number of bath states = " << n_bath << std::endl 
 			<< "size of selective CIS basis = " << sz_cis << std::endl 
@@ -128,8 +131,8 @@ int main(int, char** argv) {
 	mat E_adi_local, F_adi_local, dc_adi_local, Gamma_rlx_local;
 
 	set_size(nx_local, n_imp_local);
-	set_size(sz_sub, nx_local, E_adi_local, F_adi_local, Gamma_rlx_local);
-	set_size(sz_sub*sz_sub, nx_local, dc_adi_local);
+	set_size({sz_sub, nx_local}, E_adi_local, F_adi_local, Gamma_rlx_local);
+	set_size({sz_sub*sz_sub, nx_local}, dc_adi_local);
 
 	// global variables (used by proc 0)
 	vec n_imp;
@@ -141,16 +144,16 @@ int main(int, char** argv) {
 	double x_init = xgrid(idx_start) - 1e-3;
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, sz_sub, x_init);
 
-	if (id == 0) {
+	if (id == root) {
 		set_size(nx, n_imp);
-		set_size(sz_sub, nx, E_adi, F_adi, Gamma_rlx);
-		set_size(sz_sub*sz_sub, nx, dc_adi);
+		set_size({sz_sub, nx}, E_adi, F_adi, Gamma_rlx);
+		set_size({sz_sub*sz_sub, nx}, dc_adi);
 		sw.run(0);
 		std::cout << "model initialized" << std::endl;
 	}
 
 
-	for (int i = 0; i != nx_local; ++i) {
+	for (uword i = 0; i != nx_local; ++i) {
 		double x = xgrid(idx_start+i);
 		model.set_and_calc(x);
 		
@@ -166,7 +169,7 @@ int main(int, char** argv) {
 			std::cout << "\033[A\033[2K\033[A\033[2K\r";
 		}
 
-		if (id == 0)
+		if (id == root)
 			sw.report();
 
 		std::cout << "proc id = " << id 
@@ -179,9 +182,9 @@ int main(int, char** argv) {
 
 	std::fstream fs;
 	std::string paramfile;
-	if (id == 0) {
-		mkdir(datadir);
-		arma_save<raw_binary>( datadir,
+	if (id == root) {
+		mkdir(savedir);
+		arma_save<raw_binary>( savedir,
 				xgrid, "xgrid.dat", 
 				E_adi, "E_adi.dat", 
 				F_adi, "F_adi.dat",
@@ -190,7 +193,7 @@ int main(int, char** argv) {
 				n_imp, "n_imp.dat"
 		);
 
-		paramfile = datadir+"/param.txt";
+		paramfile = savedir+"/param.txt";
 		touch(paramfile);
 
 		fs.open(paramfile);
