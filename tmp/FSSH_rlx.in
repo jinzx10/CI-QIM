@@ -1,5 +1,5 @@
-readdir ~/job/CI-QIM/data/SIAM/test/
-savedir ~/job/CI-QIM/data/SIAM/test/
+readdir ~/job/CI-QIM/data/TwoPara/hybrid_Gamma/test
+savedir ~/job/CI-QIM/data/TwoPara/hybrid_Gamma/test
 n_trajs 20
 t_max 1.5e6
 dtc 15

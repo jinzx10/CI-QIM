@@ -10,7 +10,7 @@ using namespace arma;
 
 int main(int, char**argv) {
 
-	int id, nprocs;
+	int id, nprocs, root = 0;
 
 	MPI_Init(nullptr, nullptr);
 	MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -43,7 +43,7 @@ int main(int, char**argv) {
 	uword sz_x, sz_elec;
 
 	std::string paramfile;
-	if (id == 0) {
+	if (id == root) {
 		readargs(argv, input_file);
 
 		p.parse(input_file);
@@ -89,20 +89,20 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	bcast(n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
+	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
 			omega, mass, x0_mpt, sz_x, sz_elec);
 
 	////////////////////////////////////////////////////////////
 	//					Model Setup
 	////////////////////////////////////////////////////////////
 
-	if (id != 0) {
+	if (id != root) {
 		set_size(sz_x, xgrid);
 		set_size(sz_elec, sz_x, pes, force, Gamma);
 		set_size(sz_elec*sz_elec, sz_x, dc);
 	}
 
-	bcast(xgrid, pes, force, Gamma, dc);
+	bcast(root, xgrid, pes, force, Gamma, dc);
 
 	ModelInterp model(xgrid, pes.t(), force.t(), dc.t(), Gamma.t());
 
@@ -111,11 +111,11 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	uword ntc = t_max / dtc;
 	vec time_grid;
-	if (id == 0) {
+	if (id == root) {
 		time_grid = linspace(0, t_max, ntc);
 		dtc = time_grid(1) - time_grid(0);
 	}
-	bcast(dtc);
+	bcast(root, dtc);
 
 	double fric_gamma;
 	switch (fric_mode) {
@@ -146,7 +146,7 @@ int main(int, char**argv) {
 	umat state_t;
 	umat num_fhop;
 
-	if (id == 0) {
+	if (id == root) {
 		set_size(ntc, n_trajs, x_t, v_t, state_t, E_t);
 		set_size(n_trajs, num_fhop);
 		sw.run();
@@ -193,7 +193,7 @@ int main(int, char**argv) {
 			std::cout << "\033[A\033[2K\033[A\033[2K\r";
 		}
 
-		if (id == 0)
+		if (id == root)
 			sw.report();
 
 		std::cout << "proc id = " << id 
@@ -201,13 +201,13 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	gatherv(state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t,
+	gatherv(root, state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t,
 			num_fhop_local, num_fhop);
 
 	////////////////////////////////////////////////////////////
 	//					save data
 	////////////////////////////////////////////////////////////
-	if (id == 0) {
+	if (id == root) {
 		mkdir(savedir);
 		arma_save<raw_binary>( savedir,
 				state_t, "state_t.dat",

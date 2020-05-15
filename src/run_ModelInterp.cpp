@@ -8,7 +8,7 @@ using namespace arma;
 
 int main(int, char** argv) {
 
-	int id, nprocs;
+	int id, nprocs, root = 0;
 
 	::MPI_Init(nullptr, nullptr);
 	::MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -24,7 +24,7 @@ int main(int, char** argv) {
 	mat pes, dc, Gamma, force;
 	uword sz_x, sz_elec;
 
-	if (id == 0) {
+	if (id == root) {
 		readargs(argv, readdir, savedir);
 
 		readdir = expand_leading_tilde(readdir);
@@ -53,15 +53,15 @@ int main(int, char** argv) {
 		std::cout << "size of electronic basis: " << sz_elec << std::endl;
 	}
 
-	bcast(sz_x, sz_elec);
+	bcast(root, sz_x, sz_elec);
 
-	if (id != 0) {
+	if (id != root) {
 		set_size(sz_x, xgrid);
 		set_size(sz_elec, sz_x, pes, force, Gamma);
 		set_size(sz_elec*sz_elec, sz_x, dc);
 	}
 
-	bcast(xgrid, pes, dc, force, Gamma);
+	bcast(root, xgrid, pes, dc, force, Gamma);
 
 	ModelInterp model(xgrid, pes.t(), force.t(), dc.t(), Gamma.t());
 
@@ -69,7 +69,7 @@ int main(int, char** argv) {
 	vec x_fine = linspace(xgrid.min(), xgrid.max(), nx);
 	mat pes_fine, dc_fine, Gamma_fine, force_fine;
 
-	if (id == 0) {
+	if (id == root) {
 		std::cout << "model initialized" << std::endl;
 		set_size(sz_elec, nx, pes_fine, force_fine, Gamma_fine);
 		set_size(sz_elec*sz_elec, nx, dc_fine);
@@ -99,7 +99,7 @@ int main(int, char** argv) {
 			std::cout << "\033[A\033[2K\033[A\033[2K\r";
 		}
 
-		if (id == 0)
+		if (id == root)
 			sw.report();
 
 		std::cout << "proc id = " << id 
@@ -107,10 +107,10 @@ int main(int, char** argv) {
 			<< std::endl;
 	}
 
-	gatherv( pes_local, pes_fine, force_local, force_fine,
+	gatherv( root, pes_local, pes_fine, force_local, force_fine,
 			Gamma_local, Gamma_fine, dc_local, dc_fine );
 
-	if (id == 0) {
+	if (id == root) {
 		mkdir(savedir);
 		arma_save<raw_binary>( savedir,
 				x_fine, "x_fine.dat",
