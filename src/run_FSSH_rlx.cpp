@@ -23,7 +23,7 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	std::string input_file;
 	Parser p({"readdir", "savedir", "n_trajs", "t_max", "dtc", 
-			"velo_rev", "fric_mode", "kT"});
+			"velo_rev", "fric_mode", "kT", "sz_elec"});
 
 	std::string readdir;
 	std::string savedir;
@@ -33,6 +33,7 @@ int main(int, char**argv) {
 	int velo_rev;
 	int fric_mode;
 	double kT;
+	uword sz_elec_fssh; // used in FSSH
 
 	double omega;
 	double mass;
@@ -40,14 +41,15 @@ int main(int, char**argv) {
 	
 	vec xgrid;
 	mat pes, force, Gamma, dc;
-	uword sz_x, sz_elec;
+	uword sz_x, sz_elec; // sz_elec of data
 
 	std::string paramfile;
 	if (id == root) {
 		readargs(argv, input_file);
 
 		p.parse(input_file);
-		p.pour(readdir, savedir, n_trajs, t_max, dtc, velo_rev, fric_mode, kT);
+		p.pour(readdir, savedir, n_trajs, t_max, dtc, 
+				velo_rev, fric_mode, kT, sz_elec_fssh);
 
 		readdir = expand_leading_tilde(readdir);
 		savedir = expand_leading_tilde(savedir);
@@ -86,11 +88,12 @@ int main(int, char**argv) {
 			<< "mass = " << mass << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl
 			<< "size of electronic basis: " << sz_elec << std::endl
+			<< "size of electronic basis for FSSH: " << sz_elec_fssh << std::endl
 			<< std::endl;
 	}
 
 	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
-			omega, mass, x0_mpt, sz_x, sz_elec);
+			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh);
 
 	////////////////////////////////////////////////////////////
 	//					Model Setup
@@ -131,7 +134,8 @@ int main(int, char**argv) {
 	if (id < rem)
 		n_trajs_local += 1;
 
-	FSSH_rlx fssh_rlx(&model, mass, dtc, ntc, kT, fric_gamma, velo_rev);
+	FSSH_rlx fssh_rlx( &model, mass, dtc, ntc, 
+			kT, fric_gamma, velo_rev, sz_elec_fssh);
 
 	// local data
 	mat x_local, v_local, E_local;
@@ -153,13 +157,9 @@ int main(int, char**argv) {
 	}
 
 	// Wigner quasi-probability distribution of harmonic oscillator
-	// ground state
-	//double sigma_x = std::sqrt(0.5/mass/omega);
-	//double sigma_v = std::sqrt(omega/mass/2.0);
-	
-	// thermally-averaged
-	double sigma_x = std::sqrt( 0.5 / mass / omega / std::tanh(omega/2.0/kT) );
-	double sigma_p = std::sqrt( mass * omega / 2.0 / std::tanh(omega/2.0/kT) );
+	double sigma_x, sigma_p;
+	std::tie(sigma_x, sigma_p) = ho_wigner(mass, omega, kT);
+
 	arma::arma_rng::set_seed_random();
 
 	for (int i = 0; i != n_trajs_local; ++i) {

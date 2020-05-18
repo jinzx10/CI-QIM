@@ -80,6 +80,8 @@ struct TwoPara
 
 	void				calc_dc_adi();
 	arma::mat			dc_adi;
+	arma::mat 			ovl_sub_raw; // raw overlap matrix of subspace adiabats (before Lowdin)
+	//arma::mat           S; // basis overlap matrix
 
 	arma::vec			E_sub();
 	arma::vec			F_sub();
@@ -99,8 +101,6 @@ struct TwoPara
 void subrotate(arma::mat const& vec_sub, arma::vec& vec_d, arma::mat& vec_other, arma::mat const& H, double& H_d, arma::sp_mat& H_other);
 
 void zeyu_sign(arma::mat const& _vecs, arma::mat& vecs, arma::mat const& S = arma::mat{});
-
-arma::mat calc_dc(arma::mat const& _coef, arma::mat const& coef, double const& dx, arma::mat const& S = arma::mat{});
 
 arma::mat S_exact(arma::vec const& _vec_do, arma::mat const& _vec_o, arma::vec const& _vec_dv, arma::mat const& _vec_v, arma::vec const& vec_do, arma::mat const& vec_o, arma::vec const& vec_dv, arma::mat const& vec_v);
 

@@ -84,8 +84,8 @@ int main(int, char**argv) {
 	double x0_fil2 = 2.0*x0_fil - x0_mpt;
 	double xc = 0.0;
 	double xc2 = 0.0;
-	newtonroot(E_imp, xc);
-	newtonroot(E_imp2, xc2);
+	broydenroot(E_imp, xc);
+	broydenroot(E_imp2, xc2);
 
 	// bath
 	auto bathdos = [&] (double) { return dos_base; };

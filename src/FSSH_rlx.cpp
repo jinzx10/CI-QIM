@@ -11,12 +11,15 @@ FSSH_rlx::FSSH_rlx(
 		uword			const& 		ntc_,
 		double			const&		kT_,
 		double			const&		gamma_,
-		int				const&		velo_rev_
+		int				const&		velo_rev_,
+		uword 			const& 		sz_elec_
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_), velo_rev(velo_rev_),
 	x(0), v(0), F_pes(0), 
-	sz_elec( model->sz_elec ), span_exc( span(1,sz_elec-1) ),
+	sz_elec( (sz_elec_ && sz_elec_ <= model->sz_elec) ?  
+			sz_elec_ : model->sz_elec ), 
+	span_exc( span(1,sz_elec-1) ),
 	state(0), rho(zeros<cx_mat>(sz_elec, sz_elec)),
 	E_adi(zeros(sz_elec)), rho_eq(zeros(sz_elec)),
 	counter(0), has_hop(false),
@@ -30,7 +33,7 @@ void FSSH_rlx::initialize(bool const& state0, double const& x0, double const& v0
 	v = v0;
 	state = state0;
 	rho = rho0;
-	E_adi = model->E(x);
+	E_adi = model->E(x).head(sz_elec);
 	rho_eq = boltzmann(E_adi, kT);
 	collect();
 }
@@ -50,9 +53,9 @@ void FSSH_rlx::evolve_nucl() {
 	T = v * model->dc(x);
 	
 	// instantaneous adiabatic energies and equilibrium population
-	E_adi = model->E(x);
-	rho_eq = exp(-(E_adi-E_adi(0))/kT) / accu( exp(-(E_adi-E_adi(0))/kT) );
-	Gamma_rlx = model->Gamma(x);
+	E_adi = model->E(x).head(sz_elec);
+	rho_eq = boltzmann(E_adi, kT);
+	Gamma_rlx = model->Gamma(x).head(sz_elec);
 }
 
 void FSSH_rlx::calc_dtq() {
@@ -99,9 +102,10 @@ void FSSH_rlx::evolve_elec() {
 }
 
 void FSSH_rlx::hop() {
-	int v_sign = (v >= 0) * 1 + (v < 0) * -1;
+	int v_sign = (v >= 0) ? 1 : -1;
 
-	// (d/dt)rho_mm
+	// (d/dt)rho_mm = -\sum_l ( g_lm + q_lm )
+	// g and q are anti-symmetric
 	vec g = 2.0 * real( T.row(state).t() % rho.col(state) ); // normal 
 	vec q = zeros(sz_elec); // extra damping
 	vec rho_diag = real(rho.diag());
@@ -133,7 +137,7 @@ void FSSH_rlx::hop() {
 
 	// hopping happens, check if frustrated or not
 	double dE = E_adi(fs) - E_adi(state);
-	if ( dE <= 0.5 * mass * v * v) { // successful hops
+	if ( fs < state || dE <= 0.5 * mass * v * v ) { // successful hops
 		v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
 		state = fs;
 		has_hop = true;
@@ -142,17 +146,20 @@ void FSSH_rlx::hop() {
 
 		// for frustrated hops, check if the velocity should be reversed
 		// various velocity-reversal schemes
-		// 0=standard   -1=no   1=partial
-		bool hop_from_dc = true; 
-		if (velo_rev == 1) {
-			if (g(fs) < 0 || (dr/P_hop(fs) > g(fs)/(g(fs)+q(fs))) )
-				hop_from_dc = false;
-		}
-
-		if ( velo_rev == 0 || (velo_rev == 1 && hop_from_dc) ) {
-			double F_tmp = model->F(x,fs);
-			if ( F_pes*F_tmp < 0 && F_tmp*v < 0  )
-				v = -v;
+		switch (velo_rev) {
+			double F_fs;
+			case 0: // standard
+				F_fs = model->F(x, fs);
+				v = ( F_pes*F_fs < 0 && F_fs*v < 0 ) ? -v : v;
+				break;
+			case 1: // partial, check whether hop from dc or rlx
+				if ( g(fs) > 0 && (dr/P_hop(fs) < g(fs)/(g(fs)+q(fs))) ) {
+					F_fs = model->F(x, fs);
+					v = ( F_pes*F_fs < 0 && F_fs*v < 0 ) ? -v : v;
+				}
+				break;
+			default: // no velocity reversal
+				;
 		}
 	}
 }

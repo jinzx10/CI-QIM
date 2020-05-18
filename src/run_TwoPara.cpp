@@ -1,3 +1,4 @@
+#include <ctime>
 #include <mpi.h>
 #include <string>
 #include <stdlib.h>
@@ -21,11 +22,11 @@ int main(int, char** argv) {
 	Stopwatch sw;
 
 	////////////////////////////////////////////////////////////
-	//					Read-in Stage
+	//                  Read-in Stage
 	////////////////////////////////////////////////////////////
 	std::string file_path;
-	Parser p({"savedir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil", 
-			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width", 
+	Parser p({"savedir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil",
+			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width",
 			"sz_sub", "left_wall", "right_wall"});
 
 	std::string savedir;
@@ -76,7 +77,7 @@ int main(int, char** argv) {
 			sz_sub, left_wall, right_wall);
 
 	////////////////////////////////////////////////////////////
-	//					Two-Parabola model
+	//                  Two-Parabola model
 	////////////////////////////////////////////////////////////
 	// impurity
 	auto E_mpt = [&] (double const& x) { return 0.5 * mass * omega* omega* 
@@ -86,7 +87,7 @@ int main(int, char** argv) {
 	auto E_imp = [&] (double const& x) { return E_fil(x) - E_mpt(x); };
 
 	double xc = 0.0;
-	newtonroot(E_imp, xc);
+	broydenroot(E_imp, xc);
 
 
 	// bath
@@ -107,15 +108,44 @@ int main(int, char** argv) {
 		return dox_base + dox_peak * gauss(x, xc, dox_width);
 	};
 
-	vec xgrid = grid(x0_mpt-left_wall*(xc-x0_mpt), x0_fil+right_wall*(x0_fil-xc), density);
+	vec xgrid = grid( x0_mpt-left_wall*(xc-x0_mpt),
+			x0_fil+right_wall*(x0_fil-xc), density );
 	uword nx = xgrid.n_elem;
 
-	uword nx_local = nx / nprocs;
+	// nprocs may not be a divisor of nx
 	int rem = nx % nprocs;
-	if (id < rem)
-		nx_local += 1;
 
-	if (id == root) {
+	// if the partitioning of xgrid is exclusive
+	uword nx_local = nx / nprocs + ( id < rem ? 1 : 0 );
+	int idx_start = ( nx / nprocs ) * id + ( id < rem ? id : rem );
+
+	/* if each piece of x is handled by difference MPI processes, 
+	 * the derivative coupling calculation has a phase problem
+	 * which needs an overlap of x segments for phase adjustment
+	 * 
+	 * serial (one-proc) scheme
+	 * id     xgrid     (* indicates the initialization position)
+	 * 0     *0 1 2 3
+	 * 1             *4 5 6 7
+	 * 2                     *8 9 10 11
+	 * 3                               *12 13 ...
+	 * 
+	 * parallel (multi-proc) scheme
+	 * id     xgrid 
+	 * 0     *0 1 2 3 4
+	 * 1            * 4 5 6 7 8
+	 * 2                    * 8 9 10 11 12
+	 * 3                              * 12 13 ...
+	 * 
+	 * In the parallel scheme, each proc is initialized at the last but one position
+	 * of the last proc, and the first position is the last position of the last proc. */
+
+	if (nprocs != 1)  // parallel scheme
+		nx_local += (id != nprocs-1 ? 1 : 0);
+
+	double x_init = (id == 0 ? xgrid(0)-1e-3 : xgrid(idx_start-1));
+
+	if (id == 0) {
 		std::cout << "diabatic crossing = " << xc << std::endl
 			<< "number of bath states = " << n_bath << std::endl 
 			<< "size of selective CIS basis = " << sz_cis << std::endl 
@@ -129,29 +159,30 @@ int main(int, char** argv) {
 	// local variables and their initialization
 	vec n_imp_local;
 	mat E_adi_local, F_adi_local, dc_adi_local, Gamma_rlx_local;
+	cube ovl_local;
 
 	set_size(nx_local, n_imp_local);
 	set_size({sz_sub, nx_local}, E_adi_local, F_adi_local, Gamma_rlx_local);
 	set_size({sz_sub*sz_sub, nx_local}, dc_adi_local);
+	set_size({sz_sub, sz_sub, nx_local}, ovl_local);
 
 	// global variables (used by proc 0)
 	vec n_imp;
 	mat E_adi, F_adi, dc_adi, Gamma_rlx;
 
-	int idx_start = ( nx / nprocs ) * id + ( id >= rem ? rem : id );
-
-	// Two parabola model
-	double x_init = xgrid(idx_start) - 1e-3;
-	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, sz_sub, x_init);
-
 	if (id == root) {
 		set_size(nx, n_imp);
 		set_size({sz_sub, nx}, E_adi, F_adi, Gamma_rlx);
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
-		sw.run(0);
-		std::cout << "model initialized" << std::endl;
 	}
 
+	// Two parabola model
+	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, sz_sub, x_init);
+
+	if (id == root) {
+		std::cout << "model initialized" << std::endl;
+		sw.run(0);
+	}
 
 	for (uword i = 0; i != nx_local; ++i) {
 		double x = xgrid(idx_start+i);
@@ -160,6 +191,7 @@ int main(int, char** argv) {
 		E_adi_local.col(i) = model.E_sub();
 		F_adi_local.col(i) = model.F_sub();
 		dc_adi_local.col(i) = model.dc_adi.as_col();
+		ovl_local.slice(i) = model.ovl_sub_raw;
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 		n_imp_local(i) = model.ev_n;
 
@@ -173,9 +205,45 @@ int main(int, char** argv) {
 			sw.report();
 
 		std::cout << "proc id = " << id 
-			<< "   local task: " << (i+1) << "/" << nx_local << " finished"
+			<< "    local task: " << (i+1) << "/" << nx_local << " finished"
 			<< std::endl;
 	}
+
+	mat ovl_recv;
+	sp_mat Q(sz_sub, sz_sub);
+
+	if (nprocs != 1 && id != 0) {
+		ovl_recv.set_size(sz_sub, sz_sub);
+		MPI_Recv(ovl_recv.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		vec sgn = (ovl_local.slice(0)/ovl_recv).eval().col(0);
+		sgn(find_nonfinite(sgn)).ones();
+		Q.diag() = sgn;
+
+		for (uword i = 0; i != nx_local; ++i) {
+			ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
+		}
+	}
+
+	if (nprocs != 1 && id != nprocs-1) {
+		MPI_Send(ovl_local.slice_memptr(nx_local-1), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
+	}
+
+	// compute the sign-adjusted derivative coupling
+	if (nprocs != 1 && id != 0) {
+		for (uword i = 0; i != nx_local; ++i) {
+			double dx = xgrid(idx_start+i) - xgrid(idx_start+i-1);
+			dc_adi_local.col(i) = real( logmat( orth_lowdin(ovl_local.slice(i)) ) ).as_col() / dx; 
+		}
+	}
+
+	if (nprocs != 1 && id != nprocs-1) {
+		E_adi_local.shed_col(nx_local-1);
+		F_adi_local.shed_col(nx_local-1);
+		Gamma_rlx_local.shed_col(nx_local-1);
+		dc_adi_local.shed_col(nx_local-1);
+		n_imp_local.shed_row(nx_local-1);
+	}
+
 
 	gatherv( E_adi_local, E_adi, F_adi_local, F_adi, Gamma_rlx_local, Gamma_rlx, 
 			dc_adi_local, dc_adi, n_imp_local, n_imp);

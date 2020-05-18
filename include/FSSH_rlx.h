@@ -13,7 +13,8 @@ struct FSSH_rlx
 			arma::uword		const& 		ntc_,
 			double			const& 		kT_,
 			double 			const& 		gamma_,
-			int				const&		velo_rev_
+			int				const&		velo_rev_,
+			arma::uword 	const& 		sz_elec_ = 0
 	);
 
 	void						initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);

@@ -7,13 +7,13 @@
 using namespace arma;
 
 TwoPara::TwoPara(
-		d2d						E_mpt_,
-		d2d						E_fil_,
-		vec			const&		bath_,
-		vec			const&		cpl_,
-		uword		const&		n_occ_,
-		uword 		const&		sz_sub_,
-		double		const&		x_init_		
+		d2d                     E_mpt_,
+		d2d                     E_fil_,
+		vec         const&      bath_,
+		vec         const&      cpl_,
+		uword       const&      n_occ_,
+		uword       const&      sz_sub_,
+		double      const&      x_init_
 ):
 	E_nuc(E_mpt_), 
 	E_imp([=] (double const& x_) { return E_fil_(x_) - E_mpt_(x_); }),
@@ -138,7 +138,8 @@ void TwoPara::calc_dc_adi() {
 	zeyu_sign(_vec_slt_cis, vec_slt_cis, S(span(1, sz_cis), span(1, sz_cis)));
 	mat _coef = join_d(vec{1.0}, _vec_slt_cis);
 	mat coef = join_d(vec{1.0}, vec_slt_cis);
-	dc_adi = calc_dc(_coef, coef, x-_x, S);
+	ovl_sub_raw = _coef.t() * S * coef;
+	dc_adi = real( logmat( orth_lowdin( ovl_sub_raw ) ) ) / (x - _x);
 }
 
 void TwoPara::move_new_to_old() {
@@ -213,21 +214,6 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 	}
 }
 
-mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
-	mat overlap;
-	if (S.is_empty())
-		overlap = _coef.t() * coef;
-	else
-		overlap = _coef.t() * S * coef;
-
-	// Lowdin-orthoginalization
-	mat sqrtm_oto = sqrtmat_sympd( overlap.t() * overlap );
-	if (sum(sqrtm_oto.diag()) < 0)
-		sqrtm_oto *= -1;
-	overlap *= inv_sympd(sqrtm_oto);
-
-	return real( logmat(overlap) ) / dx;
-}
 
 mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const& _vec_v, vec const& vec_do, mat const& vec_o, vec const& vec_dv, mat const& vec_v) {
 	uword n_occ = vec_o.n_cols + 1;
@@ -246,7 +232,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 		join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
 
 	///////////////////////////////////////////////////////////
-	//							M
+	//                          M
 	///////////////////////////////////////////////////////////
 	// M1
 	mat M1 = det(ovl(i,i)) * ( ovl(cat(d0, vir), cat(d0, vir)) - 

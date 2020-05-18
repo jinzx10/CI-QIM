@@ -72,6 +72,7 @@ struct SIAM
 	// derivative coupling of a subspace of adiabats
 	void 				calc_dc_adi();
 	arma::mat			dc_adi;
+	arma::mat 			U_ovl;
 
 	// data for the last position, used to calculate force and dc
 	void				move_new_to_old();
@@ -191,6 +192,8 @@ struct SIAM
 void subrotate(arma::mat const& vec_sub, arma::vec& vec_d, arma::mat& vec_other, arma::mat const& H, double& H_d, arma::sp_mat& H_other);
 
 void zeyu_sign(arma::mat const& _vecs, arma::mat& vecs, arma::mat const& S = arma::mat{});
+
+arma::mat calc_U_ovl(arma::mat const& _coef, arma::mat const& coef, double const& dx, arma::mat const& S = arma::mat{});
 
 arma::mat calc_dc(arma::mat const& _coef, arma::mat const& coef, double const& dx, arma::mat const& S = arma::mat{});
 

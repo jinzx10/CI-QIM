@@ -74,7 +74,7 @@ double SIAM::n2n(double const& n) {
 
 void SIAM::solve_mf() {
 	auto dn = [this] (double const& n) { return n2n(n) - n; };
-	newtonroot(dn, n_mf);
+	broydenroot(dn, n_mf);
 	eig_sym( val_mf, vec_mf, F() );
 	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
 }
@@ -162,9 +162,13 @@ void SIAM::calc_Gamma_rlx() {
 }
 
 void SIAM::calc_dc_adi() {
-	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, vec_do, vec_o, vec_dv, vec_v);
+	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, 
+			vec_do, vec_o, vec_dv, vec_v);
 	zeyu_sign(_vec_cisnd, vec_cisnd, S);
-	dc_adi = calc_dc(_vec_cisnd, vec_cisnd, x-_x, S);
+	U_ovl = calc_U_ovl(_vec_cisnd, vec_cisnd, S);
+	dc_adi = real(logmat(U_ovl)) / (x-_x);
+
+	//dc_adi = calc_dc(_vec_cisnd, vec_cisnd, x-_x, S);
 }
 
 
@@ -240,7 +244,25 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 	}
 }
 
+mat calc_U_ovl(mat const& _coef, mat const& coef, mat const& S) {
+	mat overlap;
+	if (S.is_empty())
+		overlap = _coef.t() * coef;
+	else
+		overlap = _coef.t() * S * coef;
+
+	// Lowdin-orthoginalization
+	mat sqrtm_oto = sqrtmat_sympd( overlap.t() * overlap );
+	if (eig_sym(sqrtm_oto)(0) < 0)
+		sqrtm_oto *= -1;
+
+	return overlap * inv_sympd(sqrtm_oto);
+}
+
 mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
+	return real( logmat( calc_U_ovl(_coef, coef, S) ) ) / dx;
+
+	/*
 	mat overlap;
 	if (S.is_empty())
 		overlap = _coef.t() * coef;
@@ -255,6 +277,7 @@ mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
 	//overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
 
 	return real( logmat(overlap) ) / dx;
+	*/
 }
 
 mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const& _vec_v, vec const& vec_do, mat const& vec_o, vec const& vec_dv, mat const& vec_v) {
