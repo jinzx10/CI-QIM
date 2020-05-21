@@ -52,8 +52,6 @@ int main(int, char** argv) {
 				W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
 				sz_sub, left_wall, right_wall);
 
-		std::cout << savedir << std::endl;
-
 		savedir = expand_leading_tilde(savedir);
 
 		std::cout << "data will be saved to: " << savedir << std::endl
@@ -137,8 +135,9 @@ int main(int, char** argv) {
 	 * 2                    * 8 9 10 11 12
 	 * 3                              * 12 13 ...
 	 * 
-	 * In the parallel scheme, each proc is initialized at the last but one position
-	 * of the last proc, and the first position is the last position of the last proc. */
+	 * In the parallel scheme, each proc is initialized at the 
+	 * last but one position of the last proc, and the first 
+	 * position of calculation is the last position of the last proc. */
 
 	if (nprocs != 1)  // parallel scheme
 		nx_local += (id != nprocs-1 ? 1 : 0);
@@ -176,7 +175,7 @@ int main(int, char** argv) {
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
 	}
 
-	// Two parabola model
+	// model initialization
 	TwoPara model(E_mpt, E_fil, bath, cpl, n_occ, sz_sub, x_init);
 
 	if (id == root) {
@@ -209,42 +208,51 @@ int main(int, char** argv) {
 			<< std::endl;
 	}
 
-	mat ovl_recv;
-	sp_mat Q(sz_sub, sz_sub);
 
-	if (nprocs != 1 && id != 0) {
-		ovl_recv.set_size(sz_sub, sz_sub);
-		MPI_Recv(ovl_recv.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		vec sgn = (ovl_local.slice(0)/ovl_recv).eval().col(0);
-		sgn(find_nonfinite(sgn)).ones();
-		Q.diag() = sgn;
+	////////////////////////////////////////////////////////////
+	//      derivative coupling sign-fixing (multi-proc)
+	////////////////////////////////////////////////////////////
+	if (nprocs != 1) {
+		mat ovl_recv;
+		sp_mat Q(sz_sub, sz_sub);
 
-		for (uword i = 0; i != nx_local; ++i) {
-			ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
+		if (id != 0) {
+			ovl_recv.set_size(sz_sub, sz_sub);
+			MPI_Recv(ovl_recv.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			vec sgn = (ovl_local.slice(0)/ovl_recv).eval().col(0);
+			sgn(find_nonfinite(sgn)).ones();
+			Q.diag() = sgn;
+
+			for (uword i = 0; i != nx_local; ++i) {
+				ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
+			}
+		}
+
+		if (id != nprocs-1) {
+			MPI_Send(ovl_local.slice_memptr(nx_local-1), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
+		}
+
+		// compute the sign-adjusted derivative coupling
+		if (id != 0) {
+			for (uword i = 0; i != nx_local; ++i) {
+				double dx = xgrid(idx_start+i) - xgrid(idx_start+i-1);
+				dc_adi_local.col(i) = real( logmat( orth_lowdin(ovl_local.slice(i)) ) ).as_col() / dx; 
+			}
+		}
+
+		if (id != nprocs-1) {
+			E_adi_local.shed_col(nx_local-1);
+			F_adi_local.shed_col(nx_local-1);
+			Gamma_rlx_local.shed_col(nx_local-1);
+			dc_adi_local.shed_col(nx_local-1);
+			n_imp_local.shed_row(nx_local-1);
 		}
 	}
 
-	if (nprocs != 1 && id != nprocs-1) {
-		MPI_Send(ovl_local.slice_memptr(nx_local-1), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
-	}
 
-	// compute the sign-adjusted derivative coupling
-	if (nprocs != 1 && id != 0) {
-		for (uword i = 0; i != nx_local; ++i) {
-			double dx = xgrid(idx_start+i) - xgrid(idx_start+i-1);
-			dc_adi_local.col(i) = real( logmat( orth_lowdin(ovl_local.slice(i)) ) ).as_col() / dx; 
-		}
-	}
-
-	if (nprocs != 1 && id != nprocs-1) {
-		E_adi_local.shed_col(nx_local-1);
-		F_adi_local.shed_col(nx_local-1);
-		Gamma_rlx_local.shed_col(nx_local-1);
-		dc_adi_local.shed_col(nx_local-1);
-		n_imp_local.shed_row(nx_local-1);
-	}
-
-
+	////////////////////////////////////////////////////////////
+	//                  data collection
+	////////////////////////////////////////////////////////////
 	gatherv( E_adi_local, E_adi, F_adi_local, F_adi, Gamma_rlx_local, Gamma_rlx, 
 			dc_adi_local, dc_adi, n_imp_local, n_imp);
 

@@ -129,7 +129,7 @@ int main(int, char**argv) {
 			fric_gamma = 2.0 * mass * omega;
 	}
 
-	int n_trajs_local = n_trajs / nprocs;
+	uword n_trajs_local = n_trajs / nprocs;
 	int rem = n_trajs % nprocs;
 	if (id < rem)
 		n_trajs_local += 1;
@@ -140,7 +140,7 @@ int main(int, char**argv) {
 	// local data
 	mat x_local, v_local, E_local;
 	umat state_local, num_fhop_local;
-	set_size(ntc, n_trajs_local, x_local, v_local, state_local, E_local);
+	set_size({ntc, n_trajs_local}, x_local, v_local, state_local, E_local);
 	set_size(n_trajs_local, num_fhop_local);
 
 	// global data
@@ -162,7 +162,7 @@ int main(int, char**argv) {
 
 	arma::arma_rng::set_seed_random();
 
-	for (int i = 0; i != n_trajs_local; ++i) {
+	for (uword i = 0; i != n_trajs_local; ++i) {
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 

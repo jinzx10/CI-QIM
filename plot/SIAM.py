@@ -1,10 +1,14 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import matplotlib.pyplot as plt 
 import os
+import sys
 
 switch_fine = False
 
 filedir=os.path.dirname(os.path.abspath(__file__))
+#datadir=filedir+'/../data/SIAM/hybrid_Gamma/'+sys.argv[1]+'/'
 datadir=filedir+'/../data/SIAM/test/'
 
 num_fig_row = 2
@@ -19,6 +23,7 @@ force = np.fromfile(datadir+'F_adi.dat')
 pes = np.fromfile(datadir+'E_adi.dat')
 
 nx = len(xgrid)
+
 n_cisnd = np.reshape(n_cisnd, (nx,-1))
 pes = np.reshape(pes, (nx,-1))
 force = np.reshape(force, (nx,-1))
@@ -46,6 +51,10 @@ plt.plot(xgrid, n_cisnd[:,0])
 
 plt.subplot(num_fig_row, num_fig_col,2)
 plt.plot(xgrid, dc_adi[:,1]) 
+plt.plot(xgrid, dc_adi[:,2]) 
+plt.plot(xgrid, dc_adi[:,3]) 
+plt.plot(xgrid, dc_adi[:,5]) 
+plt.plot(xgrid, dc_adi[:,8]) 
 if switch_fine:
     plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 

@@ -1,19 +1,18 @@
 #include "SIAM.h"
 #include "math_helper.h"
 #include "arma_helper.h"
-#include <cassert>
 
 using namespace arma;
 
 SIAM::SIAM(
-		d2d						E_imp_,
-		d2d 					E_nuc_,
-		vec			const&		bath_,
-		vec 		const& 		cpl_,
-		double		const&		U_,
-		uword		const& 		n_occ_,
-		uword		const&		sz_sub_,
-		double		const&		x0_
+		d2d                     E_imp_,
+		d2d                     E_nuc_,
+		vec         const&      bath_,
+		vec         const&      cpl_,
+		double      const&      U_,
+		uword       const&      n_occ_,
+		uword       const&      sz_sub_,
+		double      const&      x0_
 ): 
 	x(x0_), E_imp(E_imp_), E_nuc(E_nuc_), bath(bath_), cpl(cpl_), U(U_), 
 	n_bath(bath.n_elem), n_occ(n_occ_), n_vir(n_bath+1-n_occ),
@@ -65,15 +64,13 @@ mat SIAM::F(double const& n) {
 	return conv_to<mat>::from(Fock);
 }
 
-double SIAM::n2n(double const& n) {
-	mat eigvec;
-	vec eigval;
-	eig_sym( eigval, eigvec, F(n) );
-	return accu( square(eigvec(0, span_occ)) );
-}
-
 void SIAM::solve_mf() {
-	auto dn = [this] (double const& n) { return n2n(n) - n; };
+	auto dn = [this] (double const& n) -> double { 
+		mat eigvec;
+		vec eigval;
+		eig_sym( eigval, eigvec, F(n) );
+		return accu( square(eigvec(0, span_occ)) ) - n;
+	};
 	broydenroot(dn, n_mf);
 	eig_sym( val_mf, vec_mf, F() );
 	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
@@ -101,14 +98,12 @@ void SIAM::calc_basic_elem() {
 }
 
 void SIAM::solve_cisnd() {
-	eig_sym( val_cisnd, vec_cisnd, H_cisnd() );
-	val_cisnd.resize(sz_sub);
-	vec_cisnd.resize(sz_cisnd, sz_sub);
+	eigs_sym( val_cisnd, vec_cisnd, H_cisnd(), sz_sub, "sa" );
 	n_cisnd = sum( vec_cisnd % (N_cisnd() * vec_cisnd) , 0).t();
 }
 
-mat SIAM::H_cisnd() {
-	return join<mat>( {
+sp_mat SIAM::H_cisnd() {
+	return join<sp_mat>( {
 			{ H_gnd_gnd()      , H_gnd_dodv()      , H_gnd_dob()      , H_gnd_jdv()      , H_gnd_ovov()      , H_gnd_ovob()      , H_gnd_ovjv()  }, 
 			{ H_gnd_dodv().t() , H_dodv_dodv()     , H_dodv_dob()     , H_dodv_jdv()     , H_dodv_ovov()     , H_dodv_ovob()     , H_dodv_ovjv() }, 
 			{ H_gnd_dob().t()  , H_dodv_dob().t()  , H_doa_dob()      , H_doa_jdv()      , H_doa_ovov()      , H_doa_ovob()      , H_doa_ovjv()  },
@@ -119,8 +114,8 @@ mat SIAM::H_cisnd() {
 	} );
 }
 
-mat SIAM::N_cisnd() {
-	return join<mat>( {
+sp_mat SIAM::N_cisnd() {
+	return join<sp_mat>( {
 			{ N_gnd_gnd()      , N_gnd_dodv()      , N_gnd_dob()      , N_gnd_jdv()      , N_gnd_ovov()      , N_gnd_ovob()      , N_gnd_ovjv()  }, 
 			{ N_gnd_dodv().t() , N_dodv_dodv()     , N_dodv_dob()     , N_dodv_jdv()     , N_dodv_ovov()     , N_dodv_ovob()     , N_dodv_ovjv() }, 
 			{ N_gnd_dob().t()  , N_dodv_dob().t()  , N_doa_dob()      , N_doa_jdv()      , N_doa_ovov()      , N_doa_ovob()      , N_doa_ovjv()  },
@@ -165,12 +160,9 @@ void SIAM::calc_dc_adi() {
 	mat S = S_exact(_vec_do, _vec_o, _vec_dv, _vec_v, 
 			vec_do, vec_o, vec_dv, vec_v);
 	zeyu_sign(_vec_cisnd, vec_cisnd, S);
-	U_ovl = calc_U_ovl(_vec_cisnd, vec_cisnd, S);
-	dc_adi = real(logmat(U_ovl)) / (x-_x);
-
-	//dc_adi = calc_dc(_vec_cisnd, vec_cisnd, x-_x, S);
+	ovl_sub_raw = _vec_cisnd.t() * S * vec_cisnd;
+	dc_adi = real( logmat( orth_lowdin( ovl_sub_raw ) ) ) / ( x - _x );
 }
-
 
 void SIAM::move_new_to_old() {
 	_x = x;
@@ -244,42 +236,6 @@ void zeyu_sign(mat const& _vecs, mat& vecs, mat const& S) {
 	}
 }
 
-mat calc_U_ovl(mat const& _coef, mat const& coef, mat const& S) {
-	mat overlap;
-	if (S.is_empty())
-		overlap = _coef.t() * coef;
-	else
-		overlap = _coef.t() * S * coef;
-
-	// Lowdin-orthoginalization
-	mat sqrtm_oto = sqrtmat_sympd( overlap.t() * overlap );
-	if (eig_sym(sqrtm_oto)(0) < 0)
-		sqrtm_oto *= -1;
-
-	return overlap * inv_sympd(sqrtm_oto);
-}
-
-mat calc_dc(mat const& _coef, mat const& coef, double const& dx, mat const& S) {
-	return real( logmat( calc_U_ovl(_coef, coef, S) ) ) / dx;
-
-	/*
-	mat overlap;
-	if (S.is_empty())
-		overlap = _coef.t() * coef;
-	else
-		overlap = _coef.t() * S * coef;
-
-	// Lowdin-orthoginalization
-	mat sqrtm_oto = sqrtmat_sympd( overlap.t() * overlap );
-	if (eig_sym(sqrtm_oto)(0) < 0)
-		sqrtm_oto *= -1;
-	overlap *= inv_sympd(sqrtm_oto);
-	//overlap *= inv_sympd( sqrtmat_sympd( overlap.t() * overlap ) );
-
-	return real( logmat(overlap) ) / dx;
-	*/
-}
-
 mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const& _vec_v, vec const& vec_do, mat const& vec_o, vec const& vec_dv, mat const& vec_v) {
 	uword n_occ = vec_o.n_cols + 1;
 	uword n_vir = vec_v.n_cols + 1;
@@ -299,7 +255,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 		join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
 
 	///////////////////////////////////////////////////////////
-	//							M
+	//                          M
 	///////////////////////////////////////////////////////////
 	// M1
 	uvec p = cat(d0, vir);
@@ -365,29 +321,29 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 
 
 	mat SA = join<mat>({
-			{mat{M00*M00}			, mat{sqrt(2.0)*M00*M01}, sqrt(2.0)*M00*M0b	, sqrt(2.0)*M00*M0j}, 
-			{mat{sqrt(2.0)*M00*M10}	, mat{M00*M11+M10*M01}	, M00*M1b+M10*M0b	, M00*M1j+M10*M0j},
-			{sqrt(2.0)*M00*Ma0		, M00*Ma1+Ma0*M01		, M00*Mab+Ma0*M0b	, M00*Maj+Ma0*M0j},
-			{sqrt(2.0)*M00*Mi0		, M00*Mi1+Mi0*M01		, M00*Mib+Mi0*M0b	, M00*Mij+Mi0*M0j} 
+			{mat{M00*M00}           , mat{sqrt(2.0)*M00*M01}, sqrt(2.0)*M00*M0b , sqrt(2.0)*M00*M0j}, 
+			{mat{sqrt(2.0)*M00*M10} , mat{M00*M11+M10*M01}  , M00*M1b+M10*M0b   , M00*M1j+M10*M0j},
+			{sqrt(2.0)*M00*Ma0      , M00*Ma1+Ma0*M01       , M00*Mab+Ma0*M0b   , M00*Maj+Ma0*M0j},
+			{sqrt(2.0)*M00*Mi0      , M00*Mi1+Mi0*M01       , M00*Mib+Mi0*M0b   , M00*Mij+Mi0*M0j} 
 	});
 
 	mat SB = join<mat>({
-			{mat{M10*M10}			, sqrt(2.0)*M10*M0b	, sqrt(2.0)*M01*M0j},
-			{mat{sqrt(2.0)*M01*M11}	, M11*M0b+M01*M1b	, M11*M0j+M01*M1j},
-			{sqrt(2.0)*M01*Ma1		, Ma1*M0b+M01*Mab	, Ma1*M0j+M01*Maj},
-			{sqrt(2.0)*M01*Mi1		, Mi1*M0b+M01*Mib	, Mi1*M0j+M01*Mij}
+			{mat{M10*M10}           , sqrt(2.0)*M10*M0b , sqrt(2.0)*M01*M0j},
+			{mat{sqrt(2.0)*M01*M11} , M11*M0b+M01*M1b   , M11*M0j+M01*M1j},
+			{sqrt(2.0)*M01*Ma1      , Ma1*M0b+M01*Mab   , Ma1*M0j+M01*Maj},
+			{sqrt(2.0)*M01*Mi1      , Mi1*M0b+M01*Mib   , Mi1*M0j+M01*Mij}
 	});
 
 	mat SC = join<mat>({ 
-			{mat{M10*M10}		, mat{sqrt(2.0)*M11*M10}, sqrt(2.0)*M1b*M10	, sqrt(2.0)*M1j*M10},
-			{sqrt(2.0)*Ma0*M10	, Ma0*M11+Ma1*M10		, Ma0*M1b+Mab*M10	, Ma0*M1j+Maj*M10},
-			{sqrt(2.0)*Mi0*M10	, Mi0*M11+Mi1*M10		, Mi0*M1b+Mib*M10	, Mi0*M1j+Mij*M10}
+			{mat{M10*M10}       , mat{sqrt(2.0)*M11*M10}, sqrt(2.0)*M1b*M10 , sqrt(2.0)*M1j*M10},
+			{sqrt(2.0)*Ma0*M10  , Ma0*M11+Ma1*M10       , Ma0*M1b+Mab*M10   , Ma0*M1j+Maj*M10},
+			{sqrt(2.0)*Mi0*M10  , Mi0*M11+Mi1*M10       , Mi0*M1b+Mib*M10   , Mi0*M1j+Mij*M10}
 	});
 
 	mat SD = join<mat>({
-			{mat{M11*M11}		, sqrt(2.0)*M11*M1b	, sqrt(2.0)*M11*M1j},
-			{sqrt(2.0)*M11*Ma1	, M11*Mab+Ma1*M1b	, M11*Maj+Ma1*M1j},
-			{sqrt(2.0)*M11*Mi1	, M11*Mib+Mi1*M1b	, M11*Mij+Mi1*M1j}
+			{mat{M11*M11}       , sqrt(2.0)*M11*M1b , sqrt(2.0)*M11*M1j},
+			{sqrt(2.0)*M11*Ma1  , M11*Mab+Ma1*M1b   , M11*Maj+Ma1*M1j},
+			{sqrt(2.0)*M11*Mi1  , M11*Mib+Mi1*M1b   , M11*Mij+Mi1*M1j}
 	});
 
 	return join<mat>({{SA, SB}, {SC, SD}});
@@ -402,121 +358,121 @@ sp_mat SIAM::Iv() {
 }
 
 ///////////////////////////////////////////////////////////
-//		below are all the boring matrix elements
+//      below are all the boring matrix elements
 ///////////////////////////////////////////////////////////
-mat SIAM::H_gnd_gnd() {
-	return mat{E_mf};
+sp_mat SIAM::H_gnd_gnd() {
+	return sp_mat{mat{E_mf}};
 }
 
-mat SIAM::H_gnd_dodv() {
-	return mat{0};
+sp_mat SIAM::H_gnd_dodv() {
+	return sp_mat{mat{0}};
 }
 
-mat SIAM::H_gnd_dob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::H_gnd_dob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::H_gnd_jdv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::H_gnd_jdv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::H_gnd_ovov() {
-	return mat{U * P_dodv * P_dodv};
+sp_mat SIAM::H_gnd_ovov() {
+	return sp_mat{mat{U * P_dodv * P_dodv}};
 }
 
-mat SIAM::H_gnd_ovob() {
-   	return zeros(1, n_vir-1);
+sp_mat SIAM::H_gnd_ovob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::H_gnd_ovjv() {
-   	return zeros(1, n_occ-1);
+sp_mat SIAM::H_gnd_ovjv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::H_dodv_dodv() {
-	return mat{E_mf + F_dvdv - F_dodo + U * P_dodo * P_dvdv};
+sp_mat SIAM::H_dodv_dodv() {
+	return sp_mat{mat{E_mf + F_dvdv - F_dodo + U * P_dodo * P_dvdv}};
 }
 
-mat SIAM::H_dodv_dob() {
-    return F_dvb;
+sp_mat SIAM::H_dodv_dob() {
+	return sp_mat{F_dvb};
 }
 
-mat SIAM::H_dodv_jdv() {
-	return -F_doj;
+sp_mat SIAM::H_dodv_jdv() {
+	return sp_mat{-F_doj};
 }
 
-mat SIAM::H_dodv_ovov() {
-   	return mat{sqrt(2.0) * U * P_dodv * (P_dvdv-P_dodo)};
+sp_mat SIAM::H_dodv_ovov() {
+	return sp_mat{mat{sqrt(2.0) * U * P_dodv * (P_dvdv-P_dodo)}};
 }
 
-mat SIAM::H_dodv_ovob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::H_dodv_ovob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::H_dodv_ovjv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::H_dodv_ovjv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::H_doa_dob() {
-	return conv_to<mat>::from(Iv()*(E_mf-F_dodo) + F_ab);
+sp_mat SIAM::H_doa_dob() {
+	return Iv()*(E_mf-F_dodo) + F_ab;
 }
 
-mat SIAM::H_doa_jdv() {
-	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::H_doa_jdv() {
+	return sp_mat(n_vir-1, n_occ-1);
 }
 
-mat SIAM::H_doa_ovov() {
-	return zeros(n_vir-1, 1);
+sp_mat SIAM::H_doa_ovov() {
+	return sp_mat(n_vir-1, 1);
 }
 
-mat SIAM::H_doa_ovob() {
-	return conv_to<mat>::from(-U * Iv() * P_dodv * P_dodo);
+sp_mat SIAM::H_doa_ovob() {
+	return -U * Iv() * P_dodv * P_dodo;
 }
 
-mat SIAM::H_doa_ovjv() {
-	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::H_doa_ovjv() {
+	return sp_mat(n_vir-1, n_occ-1);
 }
 
-mat SIAM::H_idv_jdv() {
-   	return conv_to<mat>::from(Io()*(E_mf+F_dvdv) - F_ij);
+sp_mat SIAM::H_idv_jdv() {
+	return Io()*(E_mf+F_dvdv) - F_ij;
 }
 
-mat SIAM::H_idv_ovov() {
-	return zeros(n_occ-1, 1);
+sp_mat SIAM::H_idv_ovov() {
+	return sp_mat(n_occ-1, 1);
 }
 
-mat SIAM::H_idv_ovob() {
-	return zeros(n_occ-1, n_vir-1);
+sp_mat SIAM::H_idv_ovob() {
+	return sp_mat(n_occ-1, n_vir-1);
 }
 
-mat SIAM::H_idv_ovjv() { 
-	return conv_to<mat>::from(U * Io() * P_dodv * P_dvdv);
+sp_mat SIAM::H_idv_ovjv() { 
+	return U * Io() * P_dodv * P_dvdv;
 }
 
-mat SIAM::H_ovov_ovov() {
-	return mat{ E_mf + 2.0*(F_dvdv-F_dodo) + 
-		U * (P_dvdv-P_dodo) * (P_dvdv-P_dodo) };
+sp_mat SIAM::H_ovov_ovov() {
+	return sp_mat{mat{ E_mf + 2.0*(F_dvdv-F_dodo) + 
+		U * (P_dvdv-P_dodo) * (P_dvdv-P_dodo) }};
 }
 
-mat SIAM::H_ovov_ovob() {
-   	return sqrt(2.0) * F_dvb;
+sp_mat SIAM::H_ovov_ovob() {
+	return sp_mat{sqrt(2.0) * F_dvb};
 }
 
-mat SIAM::H_ovov_ovjv() {
-	return -sqrt(2.0) * F_doj;
+sp_mat SIAM::H_ovov_ovjv() {
+	return sp_mat{-sqrt(2.0) * F_doj};
 }
 
-mat SIAM::H_ovoa_ovob() {
-	return conv_to<mat>::from( Iv() * ( E_mf + F_dvdv - F_dodo ) - 
-		Iv() * ( F_dodo + U * (P_dvdv-P_dodo) * P_dodo) + F_ab );
+sp_mat SIAM::H_ovoa_ovob() {
+	return Iv() * ( E_mf + F_dvdv - F_dodo ) - 
+		Iv() * ( F_dodo + U * (P_dvdv-P_dodo) * P_dodo) + F_ab;
 }
 
-mat SIAM::H_ovoa_ovjv() {
-   	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::H_ovoa_ovjv() {
+   	return sp_mat(n_vir-1, n_occ-1);
 }
 
-mat SIAM::H_oviv_ovjv() {
-	return conv_to<mat>::from( Io() * ( E_mf + F_dvdv - F_dodo ) + 
-		Io() * ( F_dvdv + U * (P_dvdv-P_dodo) * P_dvdv ) - F_ij );
+sp_mat SIAM::H_oviv_ovjv() {
+	return Io() * ( E_mf + F_dvdv - F_dodo ) + 
+		Io() * ( F_dvdv + U * (P_dvdv-P_dodo) * P_dvdv ) - F_ij;
 }
 
 sp_mat SIAM::H_doa_jb() {
@@ -535,116 +491,116 @@ sp_mat SIAM::H_oviv_ovjb() {
 	return sqrt(2) * kron(sp_mat{F_dvb}, Io());
 }
 
-mat SIAM::N_gnd_gnd() { 
-	return mat{n_mf};
+sp_mat SIAM::N_gnd_gnd() { 
+	return sp_mat{mat{n_mf}};
 }
 
-mat SIAM::N_gnd_dodv() {
-	return mat{P_dodv/sqrt(2.0)};
+sp_mat SIAM::N_gnd_dodv() {
+	return sp_mat{mat{P_dodv/sqrt(2.0)}};
 }
 
-mat SIAM::N_gnd_dob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::N_gnd_dob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::N_gnd_jdv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::N_gnd_jdv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::N_gnd_ovov() {
-	return mat{0};
+sp_mat SIAM::N_gnd_ovov() {
+	return sp_mat{mat{0}};
 }
 
-mat SIAM::N_gnd_ovob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::N_gnd_ovob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::N_gnd_ovjv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::N_gnd_ovjv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::N_dodv_dodv() {
-	return mat{n_mf + 0.5*(P_dvdv-P_dodo)};
-}
-	
-mat SIAM::N_dodv_dob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::N_dodv_dodv() {
+	return sp_mat{mat{n_mf + 0.5*(P_dvdv-P_dodo)}};
 }
 
-mat SIAM::N_dodv_jdv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::N_dodv_dob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::N_dodv_ovov() {
-	return mat{P_dodv / sqrt(2.0)};
+sp_mat SIAM::N_dodv_jdv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::N_dodv_ovob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::N_dodv_ovov() {
+	return sp_mat{mat{P_dodv / sqrt(2.0)}};
 }
 
-mat SIAM::N_dodv_ovjv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::N_dodv_ovob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::N_doa_dob() {
-	return conv_to<mat>::from(Iv()*n_mf - 0.5*Iv()*P_dodo);
+sp_mat SIAM::N_dodv_ovjv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::N_doa_jdv() {
-	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::N_doa_dob() {
+	return Iv()*n_mf - 0.5*Iv()*P_dodo;
 }
 
-mat SIAM::N_doa_ovov() {
-	return zeros(n_vir-1, 1);
+sp_mat SIAM::N_doa_jdv() {
+	return sp_mat(n_vir-1, n_occ-1);
 }
 
-mat SIAM::N_doa_ovob() {
-	return conv_to<mat>::from(0.5*Iv()*P_dodv);
+sp_mat SIAM::N_doa_ovov() {
+	return sp_mat(n_vir-1, 1);
 }
 
-mat SIAM::N_doa_ovjv() {
-	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::N_doa_ovob() {
+	return 0.5*Iv()*P_dodv;
 }
 
-mat SIAM::N_idv_jdv() {
-	return conv_to<mat>::from(Io()*n_mf + 0.5*Io()*P_dvdv);
+sp_mat SIAM::N_doa_ovjv() {
+	return sp_mat(n_vir-1, n_occ-1);
 }
 
-mat SIAM::N_idv_ovov() {
-	return zeros(n_occ-1, 1);
+sp_mat SIAM::N_idv_jdv() {
+	return Io()*n_mf + 0.5*Io()*P_dvdv;
 }
 
-mat SIAM::N_idv_ovob() {
-	return zeros(n_occ-1, n_vir-1);
+sp_mat SIAM::N_idv_ovov() {
+	return sp_mat(n_occ-1, 1);
 }
 
-mat SIAM::N_idv_ovjv() {
-	return conv_to<mat>::from(0.5*Io()*P_dodv);
+sp_mat SIAM::N_idv_ovob() {
+	return sp_mat(n_occ-1, n_vir-1);
 }
 
-mat SIAM::N_ovov_ovov() {
-	return mat{n_mf + P_dvdv - P_dodo};
+sp_mat SIAM::N_idv_ovjv() {
+	return 0.5*Io()*P_dodv;
 }
 
-mat SIAM::N_ovov_ovob() {
-	return zeros(1, n_vir-1);
+sp_mat SIAM::N_ovov_ovov() {
+	return sp_mat{mat{n_mf + P_dvdv - P_dodo}};
 }
 
-mat SIAM::N_ovov_ovjv() {
-	return zeros(1, n_occ-1);
+sp_mat SIAM::N_ovov_ovob() {
+	return sp_mat(1, n_vir-1);
 }
 
-mat SIAM::N_ovoa_ovob() {
-	return conv_to<mat>::from(Iv()*(n_mf-P_dodo) + 0.5*Iv()*P_dvdv);
+sp_mat SIAM::N_ovov_ovjv() {
+	return sp_mat(1, n_occ-1);
 }
 
-mat SIAM::N_ovoa_ovjv() {
-	return zeros(n_vir-1, n_occ-1);
+sp_mat SIAM::N_ovoa_ovob() {
+	return Iv()*(n_mf-P_dodo) + 0.5*Iv()*P_dvdv;
 }
 
-mat SIAM::N_oviv_ovjv() {
-	return conv_to<mat>::from(Io()*(n_mf+P_dvdv) - 0.5*Io()*P_dodo);
+sp_mat SIAM::N_ovoa_ovjv() {
+	return sp_mat(n_vir-1, n_occ-1);
+}
+
+sp_mat SIAM::N_oviv_ovjv() {
+	return Io()*(n_mf+P_dvdv) - 0.5*Io()*P_dodo;
 }
 
 

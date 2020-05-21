@@ -97,11 +97,6 @@ void TwoPara::solve_slt_cis() {
 			{ H_dov_jdv.t(), H_doa_jdv.t(), H_idv_jdv} } );
 
 	eigs_sym( val_slt_cis, vec_slt_cis, H_slt_cis, sz_sub-1, "sa");
-	/*
-	eig_sym( val_slt_cis, vec_slt_cis, conv_to<mat>::from(H_slt_cis) );
-	val_slt_cis.resize(sz_sub-1);
-	vec_slt_cis.resize(sz_cis, sz_sub-1);
-	*/
 }
 
 vec TwoPara::E_bath() {
