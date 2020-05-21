@@ -1,0 +1,9 @@
+readdir READDIR
+savedir SAVEDIR
+n_trajs NUM_TRAJS
+t_max T_MAX
+dtc DTC
+velo_rev 0
+fric_mode 0
+kT 0.001                  
+sz_elec SZ_ELEC
