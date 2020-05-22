@@ -13,10 +13,17 @@ x_t = np.fromfile(datadir+'x_t.dat')
 xc = 8.00011
 
 nt = len(t)
-x_t = np.reshape(x_t, (nt, -1))
 
-n_left = np.sum(x_t < xc, 1)
+x_t = np.reshape(x_t, (-1, nt))
+n_traj = np.size(x_t, 1)
+
+n_left = np.sum(x_t < xc, 0) / n_traj;
+
 plt.plot(t, n_left)
+#plt.show()
 
-plt.show()
+
+p = np.polyfit(t, np.log(n_left), 1)
+print(p)
+
 
