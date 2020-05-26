@@ -280,7 +280,7 @@ int main(int, char**argv) {
 				Gamma_rlx, "Gamma_rlx.dat"
 		);
 
-		paramfile = savedir+"param.txt";
+		paramfile = savedir+"/param.txt";
 		touch(paramfile);
 
 		fs.open(paramfile);
