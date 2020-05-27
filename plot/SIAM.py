@@ -8,8 +8,8 @@ import sys
 switch_fine = False
 
 filedir=os.path.dirname(os.path.abspath(__file__))
-#datadir=filedir+'/../data/SIAM/hybrid_Gamma/'+sys.argv[1]+'/'
-datadir=filedir+'/../data/SIAM/test/'
+datadir=filedir+'/../data/SIAM/hybrid_Gamma/'+sys.argv[1]+'/'
+#datadir=filedir+'/../data/SIAM/test/'
 
 num_fig_row = 2
 num_fig_col = 3
