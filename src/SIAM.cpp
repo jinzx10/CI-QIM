@@ -71,7 +71,7 @@ void SIAM::solve_mf() {
 		eig_sym( eigval, eigvec, F(n) );
 		return accu( square(eigvec(0, span_occ)) ) - n;
 	};
-	broydenroot(dn, n_mf);
+	broydenroot(dn, n_mf, 0.3, 1e-8, 300);
 	eig_sym( val_mf, vec_mf, F() );
 	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
 }

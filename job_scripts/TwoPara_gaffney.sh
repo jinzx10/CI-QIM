@@ -1,9 +1,9 @@
 #!/bin/bash
 
 NUM_NODES=16
-PROCS_PER_NODE=12
-WALLTIME=0:30:00
-QUEUE=debug
+PROCS_PER_NODE=6
+WALLTIME=24:00:00
+QUEUE=standard
 TOT_PROCS=$(bc -l <<< "${NUM_NODES}*${PROCS_PER_NODE}")
 
 JOBROOT=${WORKDIR}/CI-QIM
@@ -21,13 +21,13 @@ cp ${HOME}/job/CI-QIM/bin/${EXEC} ${JOBROOT}/bin/${EXEC}
 cp ${HOME}/job/CI-QIM/tmp/${RAW_INPUT} ${JOBROOT}/tmp/${RAW_INPUT}
 
 
-DOS_BASE=( 1000    1000	   2000    4000    8000    16000   24000   10000   10000    10000)
+DOS_BASE=( 1000    1000	   2000    4000    8000    16000   24000   24000   24000    24000)
 HYBRID=(   0.0128  0.0064  0.0032  0.0016  0.0008  0.0004  0.0002  0.0001  0.00005  0.000025)
 DOX_PEAK=( 20      30      40      60      100     140     200     300     450      700)
 DOX_WIDTH=(5       4       3       2       1.4     1       0.7     0.5     0.3      0.2)
 
 
-for i in {5..6}
+for i in {7..9}
 do
 	# data directory
 	SAVEDIR=${JOBROOT}/data/TwoPara/hybrid_Gamma/${HYBRID[i]}

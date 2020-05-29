@@ -72,7 +72,7 @@ int main(int, char**argv) {
 
 	bcast(x0_mpt, x0_fil, omega, mass, dE_fil, U, 
 			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
-			sz_sub, left_wall, right_wall);
+			sz_sub, left_wall, right_wall, savedir);
 
 	////////////////////////////////////////////////////////////
 	//              Anderson Impurity Model
@@ -215,19 +215,31 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
+	//std::string ovlsave = savedir + "/ovl_local_" + std::to_string(id) + ".txt";
+	//ovl_local.save(ovlsave, raw_ascii);
+
 	////////////////////////////////////////////////////////////
 	//      derivative coupling sign-fixing (multi-proc)
 	////////////////////////////////////////////////////////////
 	if (nprocs != 1) {
 		mat ovl_recv;
+		mat ovl_send;
 		sp_mat Q(sz_sub, sz_sub);
 
 		if (id != 0) {
+			std::string orsave = savedir + "/ovl_recv_" + std::to_string(id) + ".txt";
+			std::string sgnsave = savedir + "/sgn_" + std::to_string(id) + ".txt";
 			ovl_recv.set_size(sz_sub, sz_sub);
 			MPI_Recv(ovl_recv.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			vec sgn = (ovl_local.slice(0)/ovl_recv).eval().col(0);
 			sgn(find_nonfinite(sgn)).ones();
+			sgn(find(sgn > 0)).ones();
+			sgn(find(sgn < 0)).fill(-1.0);
 			Q.diag() = sgn;
+
+			//sgn.as_row().print();
+			ovl_recv.save(orsave, raw_ascii);
+			sgn.save(sgnsave, raw_ascii);
 
 			for (uword i = 0; i != nx_local; ++i) {
 				ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
@@ -235,7 +247,12 @@ int main(int, char**argv) {
 		}
 
 		if (id != nprocs-1) {
-			MPI_Send(ovl_local.slice_memptr(nx_local-1), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
+			ovl_send = ovl_local.slice(nx_local-1);
+
+			std::string ossave = savedir + "/ovl_send_" + std::to_string(id) + ".txt";
+			ovl_send.save(ossave, raw_ascii);
+
+			MPI_Send(ovl_send.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
 		}
 
 		// compute the sign-adjusted derivative coupling

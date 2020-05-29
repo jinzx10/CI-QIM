@@ -1,0 +1,16 @@
+savedir SAVEDIR
+x0_mpt 0
+x0_fil 20.6097
+omega OMEGA 
+mass 2000
+dE_fil -0.0038
+U HUBBARD_U
+W 0.2
+dos_base DOS_BASE
+hybrid HYBRID
+dox_base 5
+dox_peak DOX_PEAK
+dox_width DOX_WIDTH
+sz_sub 30
+left_wall 3
+right_wall 2

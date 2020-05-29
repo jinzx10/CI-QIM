@@ -1,20 +1,18 @@
 #!/bin/bash
 
-#!/bin/bash
-
-NUM_NODES=8
+NUM_NODES=16
 PROCS_PER_NODE=24
-WALLTIME=6:00:00
+WALLTIME=02:00:00
 QUEUE=standard
 TOT_PROCS=$(bc -l <<< "${NUM_NODES}*${PROCS_PER_NODE}")
 
 JOBROOT=${WORKDIR}/CI-QIM
-LOG="run_FSSH_rlx_vr1.log"
-EXEC="run_FSSH_rlx"
-RAW_INPUT="FSSH_rlx_raw.in"
-INPUT="FSSH_rlx.in"
-JOB_SCRIPT="FSSH_rlx.sh"
-PBS_OUT="FSSH_rlx.pbs.out"
+LOG="run_SIAM.log"
+EXEC="run_SIAM"
+RAW_INPUT="SIAM_raw.in"
+INPUT="SIAM.in"
+JOB_SCRIPT="SIAM.sh"
+PBS_OUT="SIAM.pbs.out"
 
 mkdir -p ${JOBROOT}
 mkdir -p ${JOBROOT}/bin ${JOBROOT}/tmp
@@ -23,39 +21,37 @@ cp ${HOME}/job/CI-QIM/bin/${EXEC} ${JOBROOT}/bin/${EXEC}
 cp ${HOME}/job/CI-QIM/tmp/${RAW_INPUT} ${JOBROOT}/tmp/${RAW_INPUT}
 
 
-HYBRID=(	 0.0128  0.0064  0.0032  0.0016  0.0008  0.0004 0.0002  0.0001  0.00005  0.000025)
-T_MAX_LIST=( 1.5e5   3e5     5e5     1e6    1.4e6    2e6    3e6     5e6      1e7     2e7   )
-DTC_LIST=(   30      30      20      20      15      15     10      10       5       5)
-NUM_TRAJS=2000
-SZ_ELEC=30
-VELO_REV=0
+DOS_BASE=( 1000    1000	   2000    4000    8000    16000   24000   10000   10000    10000)
+HYBRID=(   0.0128  0.0064  0.0032  0.0016  0.0008  0.0004  0.0002  0.0001  0.00005  0.000025)
+DOX_PEAK=( 20      30      40      60      100     140     200     300     450      700)
+DOX_WIDTH=(5       4       3       2       1.4     1       0.7     0.5     0.3      0.2)
+HUBBARD_U=0.06
+OMEGA=0.0003
 
-for i in {0..4}
+for i in {4..4}
 do
 	# data directory
-	READDIR=${JOBROOT}/data/SIAM/hybrid_Gamma/${HYBRID[i]}
-	SAVEDIR=${JOBROOT}/data/SIAM/hybrid_Gamma/${HYBRID[i]}/vr${VELO_REV}/
+	SAVEDIR=${JOBROOT}/data/SIAM/hybrid_Gamma/${HYBRID[i]}
 	mkdir -p ${SAVEDIR}
-	rm -f ${SAVEDIR}/${LOG}
+	rm -f ${SAVEDIR}/*.dat ${SAVEDIR}/*.txt ${SAVEDIR}/*.log
 
 	# prepare input file
 	cp ${JOBROOT}/tmp/${RAW_INPUT} ${SAVEDIR}/${INPUT}
 	sed -i -e "s@SAVEDIR@${SAVEDIR}@" \
-		-e "s@READDIR@${READDIR}@" \
-		-e "s/NUM_TRAJS/${NUM_TRAJS}/" \
-		-e "s/T_MAX/${T_MAX_LIST[i]}/" \
-		-e "s/DTC/${DTC_LIST[i]}/" \
-		-e "s/SZ_ELEC/${SZ_ELEC}/" \
-		-e "s/VELO_REV/${VELO_REV}/" \
-		${SAVEDIR}/FSSH_rlx.in
-
+		-e "s/DOS_BASE/${DOS_BASE[i]}/" \
+		-e "s/HYBRID/${HYBRID[i]}/" \
+		-e "s/DOX_PEAK/${DOX_PEAK[i]}/" \
+		-e "s/DOX_WIDTH/${DOX_WIDTH[i]}/" \
+		-e "s/HUBBARD_U/${HUBBARD_U}/" \
+		-e "s/OMEGA/${OMEGA}/" \
+		${SAVEDIR}/${INPUT}
 
 	cat > ${SAVEDIR}/${JOB_SCRIPT} <<-EOF
 		#PBS -A AFOSR33712NSH
 		#PBS -q ${QUEUE}
 		#PBS -l select=${NUM_NODES}:ncpus=48:mpiprocs=${PROCS_PER_NODE}
 		#PBS -l walltime=${WALLTIME}
-		#PBS -N FSSH_rlx
+		#PBS -N SIAM
 		#PBS -j oe
 		#PBS -o ${SAVEDIR}/${PBS_OUT}
 	
