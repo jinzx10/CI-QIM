@@ -164,6 +164,11 @@ int main(int, char**argv) {
 	mat E_adi_local, n_cisnd_local, F_adi_local, Gamma_rlx_local, dc_adi_local;
 	cube ovl_local;
 
+	/**/
+	mat ovl_all_local, val_all_local, ovl_all, val_all;
+	set_size({sz_cisnd, nx_local}, ovl_all_local, val_all_local);
+
+
 	set_size(nx_local, E_mf_local, n_mf_local);
 	set_size({sz_sub, nx_local}, E_adi_local, n_cisnd_local, 
 			F_adi_local, Gamma_rlx_local);
@@ -178,6 +183,9 @@ int main(int, char**argv) {
 		set_size(nx, E_mf, n_mf);
 		set_size({sz_sub, nx}, E_adi, n_cisnd, F_adi, Gamma_rlx);
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
+
+		/**/
+		set_size({sz_cisnd, nx}, val_all, ovl_all);
 	}
 
 	// model initialization
@@ -200,6 +208,9 @@ int main(int, char**argv) {
 		ovl_local.slice(i) = model.ovl_sub_raw;
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 		n_cisnd_local.col(i) = model.n_cisnd;
+
+		ovl_all_local.col(i) = model.ovl_all;
+		val_all_local.col(i) = model.val_all;
 
 		if (nprocs == 1) {
 			if (i == 0)
@@ -271,6 +282,9 @@ int main(int, char**argv) {
 			n_cisnd_local.shed_col(nx_local-1);
 			n_mf_local.shed_row(nx_local-1);
 			E_mf_local.shed_row(nx_local-1);
+
+			ovl_all_local.shed_col(nx_local-1);
+			val_all_local.shed_col(nx_local-1);
 		}
 	}
 
@@ -280,7 +294,8 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_adi_local, E_adi, 
 			n_cisnd_local, n_cisnd, F_adi_local, F_adi,
-			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx );
+			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx, 
+			ovl_all_local, ovl_all, val_all_local, val_all );
 
 	std::fstream fs;
 	std::string paramfile;
@@ -294,6 +309,8 @@ int main(int, char**argv) {
 				n_cisnd, "n_cisnd.dat",
 				F_adi, "F_adi.dat",
 				dc_adi, "dc_adi.dat",
+				ovl_all, "ovl_all.dat",
+				val_all, "val_all.dat",
 				Gamma_rlx, "Gamma_rlx.dat"
 		);
 
