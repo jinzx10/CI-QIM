@@ -98,7 +98,7 @@ void SIAM::calc_basic_elem() {
 }
 
 void SIAM::solve_cisnd() {
-	eig_sym( val_all, vec_all, conv_to<mat>::from(H_cisnd()) );
+	//eig_sym( val_all, vec_all, conv_to<mat>::from(H_cisnd()) );
 	eigs_sym( val_cisnd, vec_cisnd, H_cisnd(), sz_sub, "sa" );
 	n_cisnd = sum( vec_cisnd % (N_cisnd() * vec_cisnd) , 0).t();
 }
@@ -165,7 +165,7 @@ void SIAM::calc_dc_adi() {
 	dc_adi = real( logmat( orth_lowdin( ovl_sub_raw ) ) ) / ( x - _x );
 
 	/**/
-	ovl_all = abs(vec_all.col(0).t() * S * vec_all).as_col();
+	//ovl_all = abs(vec_all.col(0).t() * S * vec_all).as_col();
 }
 
 void SIAM::move_new_to_old() {

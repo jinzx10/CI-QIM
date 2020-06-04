@@ -165,8 +165,8 @@ int main(int, char**argv) {
 	cube ovl_local;
 
 	/**/
-	mat ovl_all_local, val_all_local, ovl_all, val_all;
-	set_size({sz_cisnd, nx_local}, ovl_all_local, val_all_local);
+	//mat ovl_all_local, val_all_local, ovl_all, val_all;
+	//set_size({sz_cisnd, nx_local}, ovl_all_local, val_all_local);
 
 
 	set_size(nx_local, E_mf_local, n_mf_local);
@@ -185,7 +185,7 @@ int main(int, char**argv) {
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
 
 		/**/
-		set_size({sz_cisnd, nx}, val_all, ovl_all);
+		//set_size({sz_cisnd, nx}, val_all, ovl_all);
 	}
 
 	// model initialization
@@ -209,8 +209,8 @@ int main(int, char**argv) {
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 		n_cisnd_local.col(i) = model.n_cisnd;
 
-		ovl_all_local.col(i) = model.ovl_all;
-		val_all_local.col(i) = model.val_all;
+		//ovl_all_local.col(i) = model.ovl_all;
+		//val_all_local.col(i) = model.val_all;
 
 		if (nprocs == 1) {
 			if (i == 0)
@@ -249,8 +249,8 @@ int main(int, char**argv) {
 			Q.diag() = sgn;
 
 			//sgn.as_row().print();
-			ovl_recv.save(orsave, raw_ascii);
-			sgn.save(sgnsave, raw_ascii);
+			//ovl_recv.save(orsave, raw_ascii);
+			//sgn.save(sgnsave, raw_ascii);
 
 			for (uword i = 0; i != nx_local; ++i) {
 				ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
@@ -260,8 +260,8 @@ int main(int, char**argv) {
 		if (id != nprocs-1) {
 			ovl_send = ovl_local.slice(nx_local-1);
 
-			std::string ossave = savedir + "/ovl_send_" + std::to_string(id) + ".txt";
-			ovl_send.save(ossave, raw_ascii);
+			//std::string ossave = savedir + "/ovl_send_" + std::to_string(id) + ".txt";
+			//ovl_send.save(ossave, raw_ascii);
 
 			MPI_Send(ovl_send.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
 		}
@@ -283,8 +283,8 @@ int main(int, char**argv) {
 			n_mf_local.shed_row(nx_local-1);
 			E_mf_local.shed_row(nx_local-1);
 
-			ovl_all_local.shed_col(nx_local-1);
-			val_all_local.shed_col(nx_local-1);
+			//ovl_all_local.shed_col(nx_local-1);
+			//val_all_local.shed_col(nx_local-1);
 		}
 	}
 
@@ -292,10 +292,15 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	//                  data collection
 	////////////////////////////////////////////////////////////
-	gatherv( n_mf_local, n_mf, E_mf_local, E_mf, E_adi_local, E_adi, 
-			n_cisnd_local, n_cisnd, F_adi_local, F_adi,
-			dc_adi_local, dc_adi, Gamma_rlx_local, Gamma_rlx, 
-			ovl_all_local, ovl_all, val_all_local, val_all );
+	gatherv( n_mf_local, n_mf, 
+			E_mf_local, E_mf, 
+			E_adi_local, E_adi, 
+			n_cisnd_local, n_cisnd, 
+			F_adi_local, F_adi,
+			dc_adi_local, dc_adi, 
+			//ovl_all_local, ovl_all, val_all_local, val_all 
+			Gamma_rlx_local, Gamma_rlx
+	);
 
 	std::fstream fs;
 	std::string paramfile;
@@ -309,8 +314,8 @@ int main(int, char**argv) {
 				n_cisnd, "n_cisnd.dat",
 				F_adi, "F_adi.dat",
 				dc_adi, "dc_adi.dat",
-				ovl_all, "ovl_all.dat",
-				val_all, "val_all.dat",
+				//ovl_all, "ovl_all.dat",
+				//val_all, "val_all.dat",
 				Gamma_rlx, "Gamma_rlx.dat"
 		);
 

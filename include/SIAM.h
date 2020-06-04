@@ -59,8 +59,8 @@ struct SIAM
 	arma::vec           n_cisnd;
 	arma::vec           val_cisnd;
 	arma::mat           vec_cisnd;
-	arma::vec           val_all;
-	arma::mat			vec_all;
+	//arma::vec           val_all;
+	//arma::mat           vec_all;
 
 	void                calc_force();
 	arma::vec           F_cisnd;
@@ -75,7 +75,7 @@ struct SIAM
 	void                calc_dc_adi();
 	arma::mat           dc_adi;
 	arma::mat           ovl_sub_raw;
-	arma::vec           ovl_all;
+	//arma::vec           ovl_all;
 
 	// data for the last position, used to calculate force and dc
 	void                move_new_to_old();
