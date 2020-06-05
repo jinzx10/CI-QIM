@@ -277,7 +277,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	// Maj
 	q = cat(dv, occ);
 	mat Zt = ovl(i,q);
-	mat ns = null(Zt);
+	mat ns = null_qr(Zt);
 	mat Ro = ovl(d0,q) * ns;
 	mat Ra = ovl(a,q) * ns;
 	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
@@ -291,7 +291,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat ovl2 = ovl.t();
 	q = cat(dv, occ);
 	Zt = ovl2(i,q);
-	ns = null(Zt);
+	ns = null_qr(Zt);
 	Ro = ovl2(d0,q) * ns;
 	Ra = ovl2(a,q) * ns;
 	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
