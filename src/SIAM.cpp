@@ -277,7 +277,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	bool status = null_qr(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
 		std::cout << "Maj: null failed" << std::endl;
-		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
+		//ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
 		exit(EXIT_FAILURE);
 	}
 
@@ -296,7 +296,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	status = null_qr(ns, ovl(i, cat(dv, occ)));
 	if (!status) {
 		std::cout << "Mib: null failed" << std::endl;
-		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
+		//ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
 		exit(EXIT_FAILURE);
 	}
 
