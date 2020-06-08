@@ -262,45 +262,52 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	//                          M
 	///////////////////////////////////////////////////////////
 	// M1
-	uvec p = cat(d0, vir);
-	uvec q = cat(d0, vir);
-	mat M1 = det(ovl(i,j)) * ( ovl(p,q) - ovl(p,j) * solve(ovl(i,j), ovl(i,p)) );
+	mat M1 = det(ovl(i,i)) * ( ovl(cat(d0, vir), cat(d0, vir)) - 
+			ovl(cat(d0, vir),i) * solve(ovl(i,i), ovl(i, cat(d0, vir))) );
 
 	// M2
-	p = cat(dv, occ);
-	q = cat(dv, occ);
-	mat Y = ovl(p,q);
+	mat Y = ovl(cat(dv, occ), cat(dv, occ));
 	Y.row(0) *= -1;
 	Y.col(0) *= -1;
 	mat M2 = det(Y) * inv(Y).t();
+	Y.clear();
 
 	// Maj
-	q = cat(dv, occ);
-	mat Zt = ovl(i,q);
-	mat ns = null_qr(Zt);
-	mat Ro = ovl(d0,q) * ns;
-	mat Ra = ovl(a,q) * ns;
-	mat u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
-	mat v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
-	mat x = ns * join_cols(u.t(), v.t());
+	mat ns;
+	bool status = null_qr(ns, ovl(i, cat(dv, occ)));
+	if (!status) {
+		std::cout << "Maj: null failed" << std::endl;
+		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
+		exit(EXIT_FAILURE);
+	}
+
+	mat Ro = ovl(d0, cat(dv, occ)) * ns;
+	mat Ra = ovl(a, cat(dv, occ)) * ns;
+	mat x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
+
 	mat Maj = det(ovl(occ,occ)) * ( 
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
 			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	x.clear();
 
 	// Mib
-	mat ovl2 = ovl.t();
-	q = cat(dv, occ);
-	Zt = ovl2(i,q);
-	ns = null_qr(Zt);
-	Ro = ovl2(d0,q) * ns;
-	Ra = ovl2(a,q) * ns;
-	u = Ra.col(1) / ( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) );
-	v = 1.0/Ro(1) - Ro(0)/Ro(1)*u;
-	x = ns * join_cols(u.t(), v.t());
-	mat Mib = det(ovl2(occ,occ)) * (
+	inplace_trans(ovl);
+	status = null_qr(ns, ovl(i, cat(dv, occ)));
+	if (!status) {
+		std::cout << "Mib: null failed" << std::endl;
+		ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
+		exit(EXIT_FAILURE);
+	}
+
+	Ro = ovl(d0, cat(dv, occ)) * ns;
+	Ra = ovl(a, cat(dv, occ)) * ns;
+	x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
+	mat Mib = det(ovl(occ,occ)) * (
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-			( ovl2(a,dv) - ovl2(a,occ) * solve(ovl2(occ,occ), ovl2(occ,dv)) ) );
-	Mib = Mib.t();
+			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	inplace_trans(Mib);
 
 	// individual M block
 	span r = span(2, M1.n_rows-1);
@@ -314,6 +321,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Ma0 = M1(r, 0);
 	mat Ma1 = M1(r, 1);
 	mat Mab = M1(r, c);
+	M1.clear();
 
 	r = span(2, M2.n_rows-1);
 	c = span(2, M2.n_cols-1);
@@ -322,6 +330,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Mi0 = M2(r, 0);
 	mat Mi1 = M2(r, 1);
 	mat Mij = M2(r, c);
+	M2.clear();
 
 
 	mat SA = join<mat>({
