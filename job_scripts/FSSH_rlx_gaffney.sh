@@ -1,15 +1,7 @@
 #!/bin/bash
 
-#!/bin/bash
-
-NUM_NODES=8
-PROCS_PER_NODE=24
-WALLTIME=6:00:00
-QUEUE=standard
-TOT_PROCS=$(bc -l <<< "${NUM_NODES}*${PROCS_PER_NODE}")
-
 JOBROOT=${WORKDIR}/CI-QIM
-LOG="run_FSSH_rlx_vr1.log"
+LOG="run_FSSH_rlx.log"
 EXEC="run_FSSH_rlx"
 RAW_INPUT="FSSH_rlx_raw.in"
 INPUT="FSSH_rlx.in"
@@ -22,6 +14,10 @@ mkdir -p ${JOBROOT}/bin ${JOBROOT}/tmp
 cp ${HOME}/job/CI-QIM/bin/${EXEC} ${JOBROOT}/bin/${EXEC}
 cp ${HOME}/job/CI-QIM/tmp/${RAW_INPUT} ${JOBROOT}/tmp/${RAW_INPUT}
 
+NNODES=(   8          8          8          8          8          8          12         16         24         24)
+PPN=(      24         24         24         24         24         24         24         24         24         24) 
+WTIME=(    02:00:00   03:00:00   04:00:00   06:00:00   08:00:00   10:00:00   12:00:00   16:00:00   24:00:00   36:00:00 )
+QQ=(       standard   standard   standard   standard   standard   standard   standard   standard   standard   standard )
 
 HYBRID=(	 0.0128  0.0064  0.0032  0.0016  0.0008  0.0004 0.0002  0.0001  0.00005  0.000025)
 T_MAX_LIST=( 1.5e5   3e5     5e5     1e6    1.4e6    2e6    3e6     5e6      1e7     2e7   )
@@ -30,7 +26,7 @@ NUM_TRAJS=2000
 SZ_ELEC=30
 VELO_REV=0
 
-for i in {0..4}
+for i in {0..9}
 do
 	# data directory
 	READDIR=${JOBROOT}/data/SIAM/hybrid_Gamma/${HYBRID[i]}
@@ -49,6 +45,11 @@ do
 		-e "s/VELO_REV/${VELO_REV}/" \
 		${SAVEDIR}/FSSH_rlx.in
 
+	QUEUE=${QQ[i]}
+	NUM_NODES=${NNODES[i]}
+	PROCS_PER_NODE=${PPN[i]}
+	WALLTIME=${WTIME[i]}
+	TOT_PROCS=$(bc -l <<< "${NUM_NODES}*${PROCS_PER_NODE}")
 
 	cat > ${SAVEDIR}/${JOB_SCRIPT} <<-EOF
 		#PBS -A AFOSR33712NSH

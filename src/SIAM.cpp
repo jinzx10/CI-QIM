@@ -98,8 +98,10 @@ void SIAM::calc_basic_elem() {
 }
 
 void SIAM::solve_cisnd() {
-	//eig_sym( val_all, vec_all, conv_to<mat>::from(H_cisnd()) );
-	eigs_sym( val_cisnd, vec_cisnd, H_cisnd(), sz_sub, "sa" );
+	eig_sym( val_cisnd, vec_cisnd, conv_to<mat>::from(H_cisnd()) );
+	vec_cisnd = vec_cisnd.head_cols(sz_sub);
+	val_cisnd = val_cisnd.head_rows(sz_sub);
+	//eigs_sym( val_cisnd, vec_cisnd, H_cisnd(), sz_sub, "sa" );
 	n_cisnd = sum( vec_cisnd % (N_cisnd() * vec_cisnd) , 0).t();
 }
 
@@ -153,8 +155,14 @@ vec SIAM::E_bath() {
 
 void SIAM::calc_Gamma_rlx() {
 	mat V_adi = vec_cisnd.tail_cols(sz_sub-1).t() * V_cpl();
+	Gamma_rlx(0) = 0;
+	for (size_t i = 1; i != sz_sub; ++i) {
+		Gamma_rlx(i) = 2.0 * arma::datum::pi * as_scalar( square(V_adi.row(i-1))
+			   * normpdf(E_bath(), val_cisnd(i), 5.0*dE_avg) );
+	}
+	/* the following line requires too much memory for large number of bath states
 	Gamma_rlx.tail(sz_sub-1) = 2.0 * acos(-1.0) * sum( square(V_adi) % 
-			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 );
+			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 ); */
 }
 
 void SIAM::calc_dc_adi() {
