@@ -14,10 +14,9 @@ mkdir -p ${JOBROOT}/bin ${JOBROOT}/tmp
 cp ${HOME}/job/CI-QIM/bin/${EXEC} ${JOBROOT}/bin/${EXEC}
 cp ${HOME}/job/CI-QIM/tmp/${RAW_INPUT} ${JOBROOT}/tmp/${RAW_INPUT}
 
-NNODES=(   4          4          8          16          4         24         24         24         24         24)
+NNODES=(   4          4          8          16          2         24         24         24         24         24)
 PPN=(      24         24         24         12         12         4          4          4          4          4)
 WTIME=(    00:10:00   00:10:00   00:20:00   00:30:00   00:30:00   08:00:00   24:00:00   24:00:00   24:00:00   24:00:00 )
-QQ=(       debug      debug      debug      debug      debug      standard   standard   standard   standard   standard )
 
 DOS_BASE=( 1000       1000       2000       4000       8000       16000      24000      24000      24000      24000)
 HYBRID=(   0.0128     0.0064     0.0032     0.0016     0.0008     0.0004     0.0002     0.0001     0.00005    0.000025)
@@ -46,11 +45,14 @@ do
 		-e "s/SZ_SUB/${SZ_SUB[i]}/" \
 		${SAVEDIR}/${INPUT}
 
-	QUEUE=${QQ[i]}
 	NUM_NODES=${NNODES[i]}
 	PROCS_PER_NODE=${PPN[i]}
 	WALLTIME=${WTIME[i]}
 	TOT_PROCS=$(bc -l <<< "${NUM_NODES}*${PROCS_PER_NODE}")
+	QUEUE=debug
+	if [[ "$WALLTIME" > "00:30:00" ]]; then
+		QUEUE=standard
+	fi
 
 	cat > ${SAVEDIR}/${JOB_SCRIPT} <<-EOF
 		#PBS -A AFOSR33712NSH
