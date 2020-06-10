@@ -52,33 +52,33 @@ void SIAM::set_and_calc(double const& x_) {
 	calc_dc_adi();
 }
 
-mat SIAM::F() {
-	sp_mat Fock = h;
-	Fock(0,0) += U * n_mf;
-	return conv_to<mat>::from(Fock);
+sp_mat SIAM::F() {
+	return F(n_mf);
 }
 
-mat SIAM::F(double const& n) {
+sp_mat SIAM::F(double const& n) {
 	sp_mat Fock = h;
 	Fock(0,0) += U * n;
-	return conv_to<mat>::from(Fock);
+	return Fock;
 }
 
 void SIAM::solve_mf() {
 	auto dn = [this] (double const& n) -> double { 
 		mat eigvec;
 		vec eigval;
-		eig_sym( eigval, eigvec, F(n) );
+		eig_sym( eigval, eigvec, conv_to<mat>::from(F(n)) );
 		return accu( square(eigvec(0, span_occ)) ) - n;
 	};
-	broydenroot(dn, n_mf, 0.3, 1e-8, 300);
-	eig_sym( val_mf, vec_mf, F() );
+	broydenroot(dn, n_mf, 0.7, 1e-8, 300);
+	eig_sym( val_mf, vec_mf, conv_to<mat>::from(F()) );
 	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
 }
 
 void SIAM::rotate_orb() {
-	subrotate(vec_mf.cols(span_occ), vec_do, vec_o, F(), F_dodo, F_ij);
-	subrotate(vec_mf.cols(span_vir), vec_dv, vec_v, F(), F_dvdv, F_ab);
+	subrotate(vec_mf.cols(span_occ), vec_do, vec_o, conv_to<mat>::from(F()), 
+			F_dodo, F_ij);
+	subrotate(vec_mf.cols(span_vir), vec_dv, vec_v, conv_to<mat>::from(F()), 
+			F_dvdv, F_ab);
 }
 
 void SIAM::adj_orb_sign() {
@@ -160,9 +160,6 @@ void SIAM::calc_Gamma_rlx() {
 		Gamma_rlx(i) = 2.0 * arma::datum::pi * as_scalar( square(V_adi.row(i-1))
 			   * normpdf(E_bath(), val_cisnd(i), 5.0*dE_avg) );
 	}
-	/* the following line requires too much memory for large number of bath states
-	Gamma_rlx.tail(sz_sub-1) = 2.0 * acos(-1.0) * sum( square(V_adi) % 
-			gauss(val_cisnd(span(1, sz_sub-1)), E_bath().t(), 5.0*dE_avg), 1 ); */
 }
 
 void SIAM::calc_dc_adi() {
@@ -171,9 +168,6 @@ void SIAM::calc_dc_adi() {
 	zeyu_sign(_vec_cisnd, vec_cisnd, S);
 	ovl_sub_raw = _vec_cisnd.t() * S * vec_cisnd;
 	dc_adi = real( logmat( orth_lowdin( ovl_sub_raw ) ) ) / ( x - _x );
-
-	/**/
-	//ovl_all = abs(vec_all.col(0).t() * S * vec_all).as_col();
 }
 
 void SIAM::move_new_to_old() {
@@ -263,8 +257,10 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	uvec d0 = uvec{0};
 	uvec dv = uvec{n_occ};
 
-	mat ovl = join_r(mat{_vec_do}, _vec_o, mat{_vec_dv}, _vec_v).t() * 
-		join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
+	//mat ovl = join_r(mat{_vec_do}, _vec_o, mat{_vec_dv}, _vec_v).t() * 
+	//	join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
+	mat ovl = join_rows(_vec_do, _vec_o, _vec_dv, _vec_v).t() * 
+		join_rows(vec_do, vec_o, vec_dv, vec_v);
 
 	///////////////////////////////////////////////////////////
 	//                          M
@@ -273,51 +269,6 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat M1 = det(ovl(i,i)) * ( ovl(cat(d0, vir), cat(d0, vir)) - 
 			ovl(cat(d0, vir),i) * solve(ovl(i,i), ovl(i, cat(d0, vir))) );
 
-	// M2
-	mat Y = ovl(cat(dv, occ), cat(dv, occ));
-	Y.row(0) *= -1;
-	Y.col(0) *= -1;
-	mat M2 = det(Y) * inv(Y).t();
-	Y.clear();
-
-	// Maj
-	mat ns;
-	bool status = null_qr(ns, ovl(i, cat(dv, occ)));
-	if (!status) {
-		std::cout << "Maj: null failed" << std::endl;
-		//ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
-		exit(EXIT_FAILURE);
-	}
-
-	mat Ro = ovl(d0, cat(dv, occ)) * ns;
-	mat Ra = ovl(a, cat(dv, occ)) * ns;
-	mat x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
-			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
-
-	mat Maj = det(ovl(occ,occ)) * ( 
-			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
-	x.clear();
-
-	// Mib
-	inplace_trans(ovl);
-	status = null_qr(ns, ovl(i, cat(dv, occ)));
-	if (!status) {
-		std::cout << "Mib: null failed" << std::endl;
-		//ovl(i, cat(dv, occ)).eval().save(expand_leading_tilde("~/Zt.dat"), raw_ascii);
-		exit(EXIT_FAILURE);
-	}
-
-	Ro = ovl(d0, cat(dv, occ)) * ns;
-	Ra = ovl(a, cat(dv, occ)) * ns;
-	x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
-			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
-	mat Mib = det(ovl(occ,occ)) * (
-			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
-			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
-	inplace_trans(Mib);
-
-	// individual M block
 	span r = span(2, M1.n_rows-1);
 	span c = span(2, M1.n_cols-1);
 	double M00 = M1(0,0);
@@ -331,6 +282,13 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Mab = M1(r, c);
 	M1.clear();
 
+	// M2
+	mat Y = ovl(cat(dv, occ), cat(dv, occ));
+	Y.row(0) *= -1;
+	Y.col(0) *= -1;
+	mat M2 = det(Y) * inv(Y).t();
+	Y.clear();
+
 	r = span(2, M2.n_rows-1);
 	c = span(2, M2.n_cols-1);
 	mat M0j = M2(0, c);
@@ -340,34 +298,69 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Mij = M2(r, c);
 	M2.clear();
 
+	// Maj
+	mat ns = null_qr( ovl(i, cat(dv, occ)) );
+	mat Ro = ovl(d0, cat(dv, occ)) * ns;
+	mat Ra = ovl(a, cat(dv, occ)) * ns;
+	mat x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
 
-	mat SA = join<mat>({
-			{mat{M00*M00}           , mat{sqrt(2.0)*M00*M01}, sqrt(2.0)*M00*M0b , sqrt(2.0)*M00*M0j}, 
-			{mat{sqrt(2.0)*M00*M10} , mat{M00*M11+M10*M01}  , M00*M1b+M10*M0b   , M00*M1j+M10*M0j},
-			{sqrt(2.0)*M00*Ma0      , M00*Ma1+Ma0*M01       , M00*Mab+Ma0*M0b   , M00*Maj+Ma0*M0j},
-			{sqrt(2.0)*M00*Mi0      , M00*Mi1+Mi0*M01       , M00*Mib+Mi0*M0b   , M00*Mij+Mi0*M0j} 
-	});
+	mat Maj = det(ovl(occ,occ)) * ( 
+			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	x.clear();
 
-	mat SB = join<mat>({
-			{mat{M10*M10}           , sqrt(2.0)*M10*M0b , sqrt(2.0)*M01*M0j},
-			{mat{sqrt(2.0)*M01*M11} , M11*M0b+M01*M1b   , M11*M0j+M01*M1j},
-			{sqrt(2.0)*M01*Ma1      , Ma1*M0b+M01*Mab   , Ma1*M0j+M01*Maj},
-			{sqrt(2.0)*M01*Mi1      , Mi1*M0b+M01*Mib   , Mi1*M0j+M01*Mij}
-	});
+	// Mib
+	inplace_trans(ovl);
+	ns = null_qr( ovl(i, cat(dv, occ)) );
+	Ro = ovl(d0, cat(dv, occ)) * ns;
+	Ra = ovl(a, cat(dv, occ)) * ns;
+	x = ns * ( join_rows(Ra.col(1), -Ra.col(0)).eval().each_col() / 
+			( Ra.col(1)*Ro(0) - Ra.col(0)*Ro(1) )  ).t();
+	mat Mib = det(ovl(occ,occ)) * (
+			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
+			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
+	inplace_trans(Mib);
+	x.clear();
+	ns.clear();
+	Ro.clear();
+	Ra.clear();
 
-	mat SC = join<mat>({ 
-			{mat{M10*M10}       , mat{sqrt(2.0)*M11*M10}, sqrt(2.0)*M1b*M10 , sqrt(2.0)*M1j*M10},
-			{sqrt(2.0)*Ma0*M10  , Ma0*M11+Ma1*M10       , Ma0*M1b+Mab*M10   , Ma0*M1j+Maj*M10},
-			{sqrt(2.0)*Mi0*M10  , Mi0*M11+Mi1*M10       , Mi0*M1b+Mib*M10   , Mi0*M1j+Mij*M10}
-	});
+	auto SA = [&] () -> mat {
+		return join_cols(
+				join_rows(mat{M00*M00}          , mat{sqrt(2.0)*M00*M01}, sqrt(2.0)*M00*M0b, sqrt(2.0)*M00*M0j),
+				join_rows(mat{sqrt(2.0)*M00*M10}, mat{M00*M11+M10*M01}  , M00*M1b+M10*M0b  , M00*M1j+M10*M0j),
+				join_rows(sqrt(2.0)*M00*Ma0     , M00*Ma1+Ma0*M01       , M00*Mab+Ma0*M0b  , M00*Maj+Ma0*M0j),
+				join_rows(sqrt(2.0)*M00*Mi0     , M00*Mi1+Mi0*M01       , M00*Mib+Mi0*M0b  , M00*Mij+Mi0*M0j)
+		);
+	};
 
-	mat SD = join<mat>({
-			{mat{M11*M11}       , sqrt(2.0)*M11*M1b , sqrt(2.0)*M11*M1j},
-			{sqrt(2.0)*M11*Ma1  , M11*Mab+Ma1*M1b   , M11*Maj+Ma1*M1j},
-			{sqrt(2.0)*M11*Mi1  , M11*Mib+Mi1*M1b   , M11*Mij+Mi1*M1j}
-	});
+	auto SB = [&] () -> mat {
+		return join_cols(
+				join_rows(mat{M10*M10}          , sqrt(2.0)*M10*M0b, sqrt(2.0)*M01*M0j),
+				join_rows(mat{sqrt(2.0)*M01*M11}, M11*M0b+M01*M1b  , M11*M0j+M01*M1j),
+				join_rows(sqrt(2.0)*M01*Ma1     , Ma1*M0b+M01*Mab  , Ma1*M0j+M01*Maj),
+				join_rows(sqrt(2.0)*M01*Mi1     , Mi1*M0b+M01*Mib  , Mi1*M0j+M01*Mij)
+		);
+	};
 
-	return join<mat>({{SA, SB}, {SC, SD}});
+	auto SC = [&] () -> mat {
+		return join_cols(
+				join_rows(mat{M10*M10}     , mat{sqrt(2.0)*M11*M10}, sqrt(2.0)*M1b*M10, sqrt(2.0)*M1j*M10),
+				join_rows(sqrt(2.0)*Ma0*M10, Ma0*M11+Ma1*M10       , Ma0*M1b+Mab*M10  , Ma0*M1j+Maj*M10),
+				join_rows(sqrt(2.0)*Mi0*M10, Mi0*M11+Mi1*M10       , Mi0*M1b+Mib*M10  , Mi0*M1j+Mij*M10)
+		);
+	};
+
+	auto SD = [&] () -> mat {
+		return join_cols(
+				join_rows(mat{M11*M11}     , sqrt(2.0)*M11*M1b, sqrt(2.0)*M11*M1j),
+				join_rows(sqrt(2.0)*M11*Ma1, M11*Mab+Ma1*M1b  , M11*Maj+Ma1*M1j),
+				join_rows(sqrt(2.0)*M11*Mi1, M11*Mib+Mi1*M1b  , M11*Mij+Mi1*M1j)
+		);
+	};
+
+	return join_cols(join_rows(SA(), SB()), join_rows(SC(), SD()));
 }
 
 sp_mat SIAM::Io() {

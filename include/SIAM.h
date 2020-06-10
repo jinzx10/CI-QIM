@@ -103,9 +103,9 @@ struct SIAM
 	arma::uword         sz_cisnd;
 	arma::uword         sz_jb;
 	double              dE_avg;
-	arma::mat           F();
-	arma::mat           F(double const& n);
-	//double              n2n(double const& n);
+
+	arma::sp_mat        F();
+	arma::sp_mat        F(double const& n);
 	arma::sp_mat        Io();
 	arma::sp_mat        Iv();
 
