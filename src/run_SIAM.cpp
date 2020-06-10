@@ -50,9 +50,14 @@ int main(int, char**argv) {
 		p.pour(savedir, x0_mpt, x0_fil, omega, mass, dE_fil, U, 
 				W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
 				sz_sub, left_wall, right_wall);
-
 		savedir = expand_leading_tilde(savedir);
+	}
 
+	bcast(0, x0_mpt, x0_fil, omega, mass, dE_fil, U, 
+			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
+			sz_sub, left_wall, right_wall, savedir);
+
+	if (id == nprocs-1) {
 		std::cout << "data will be saved to: " << savedir << std::endl
 			<< "x0_mpt = " << x0_mpt << std::endl
 			<< "x0_fil = " << x0_fil << std::endl
@@ -69,10 +74,6 @@ int main(int, char**argv) {
 			<< "size of subspace adiabats = " << sz_sub << std::endl
 			<< std::endl;
 	}
-
-	bcast(x0_mpt, x0_fil, omega, mass, dE_fil, U, 
-			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
-			sz_sub, left_wall, right_wall, savedir);
 
 	////////////////////////////////////////////////////////////
 	//              Anderson Impurity Model
@@ -147,13 +148,13 @@ int main(int, char**argv) {
 
 	double x_init = (id == 0 ? xgrid(0)-1e-3 : xgrid(idx_start-1));
 
-	if (id == 0) {
+	if (id == nprocs-1) {
 		std::cout << "0-1 diabatic crossing = " << xc << std::endl
 			<< "1-2 diabatic crossing = " << xc2 << std::endl
 			<< "number of bath states = " << n_bath << std::endl 
 			<< "size of selective CISND basis = " << sz_cisnd << std::endl 
 			<< "number of x grid points: " << nx << std::endl
-			<< "number of x grid points for proc-0: " << nx_local << std::endl
+			<< "number of x grid points for the last proc: " << nx_local << std::endl
 			<< "minimum on-site energy: " << E_imp(xgrid(nx-1)) << std::endl
 			<< "maximum on-site energy: " << E_imp(xgrid(0)) << std::endl
 			<< std::endl;
@@ -182,6 +183,8 @@ int main(int, char**argv) {
 
 	// model initialization
 	SIAM model(E_imp, E_mpt, bath, cpl, U, n_occ, sz_sub, x_init);
+
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	if (id == 0) {
 		sw.run(0);
