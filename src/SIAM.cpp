@@ -106,27 +106,79 @@ void SIAM::solve_cisnd() {
 }
 
 sp_mat SIAM::H_cisnd() {
-	return join<sp_mat>( {
-			{ H_gnd_gnd()      , H_gnd_dodv()      , H_gnd_dob()      , H_gnd_jdv()      , H_gnd_ovov()      , H_gnd_ovob()      , H_gnd_ovjv()  }, 
-			{ H_gnd_dodv().t() , H_dodv_dodv()     , H_dodv_dob()     , H_dodv_jdv()     , H_dodv_ovov()     , H_dodv_ovob()     , H_dodv_ovjv() }, 
-			{ H_gnd_dob().t()  , H_dodv_dob().t()  , H_doa_dob()      , H_doa_jdv()      , H_doa_ovov()      , H_doa_ovob()      , H_doa_ovjv()  },
-			{ H_gnd_jdv().t()  , H_dodv_jdv().t()  , H_doa_jdv().t()  , H_idv_jdv()      , H_idv_ovov()      , H_idv_ovob()      , H_idv_ovjv()  }, 
-			{ H_gnd_ovov().t() , H_dodv_ovov().t() , H_doa_ovov().t() , H_idv_ovov().t() , H_ovov_ovov()     , H_ovov_ovob()     , H_ovov_ovjv() },
-			{ H_gnd_ovob().t() , H_dodv_ovob().t() , H_doa_ovob().t() , H_idv_ovob().t() , H_ovov_ovob().t() , H_ovoa_ovob()     , H_ovoa_ovjv() },
-			{ H_gnd_ovjv().t() , H_dodv_ovjv().t() , H_doa_ovjv().t() , H_idv_ovjv().t() , H_ovov_ovjv().t() , H_ovoa_ovjv().t() , H_oviv_ovjv() } 
-	} );
+	auto H11 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(H_gnd_gnd()     , H_gnd_dodv()    , H_gnd_dob()    , H_gnd_jdv()),
+				join_rows(H_gnd_dodv().t(), H_dodv_dodv()   , H_dodv_dob()   , H_dodv_jdv()),
+				join_rows(H_gnd_dob().t() , H_dodv_dob().t(), H_doa_dob()    , H_doa_jdv()),
+				join_rows(H_gnd_jdv().t() , H_dodv_jdv().t(), H_doa_jdv().t(), H_idv_jdv())
+		);
+	};
+
+	auto H21 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(H_gnd_ovov().t(), H_dodv_ovov().t(), H_doa_ovov().t(), H_idv_ovov().t()),
+				join_rows(H_gnd_ovob().t(), H_dodv_ovob().t(), H_doa_ovob().t(), H_idv_ovob().t()),
+				join_rows(H_gnd_ovjv().t(), H_dodv_ovjv().t(), H_doa_ovjv().t(), H_idv_ovjv().t())
+		);
+	};
+
+	auto H12 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(H_gnd_ovov() , H_gnd_ovob() , H_gnd_ovjv()),
+				join_rows(H_dodv_ovov(), H_dodv_ovob(), H_dodv_ovjv()),
+				join_rows(H_doa_ovov() , H_doa_ovob() , H_doa_ovjv()),
+				join_rows(H_idv_ovov() , H_idv_ovob() , H_idv_ovjv())
+		);
+	};
+
+	auto H22 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(H_ovov_ovov()    , H_ovov_ovob()    , H_ovov_ovjv()),
+				join_rows(H_ovov_ovob().t(), H_ovoa_ovob()    , H_ovoa_ovjv()),
+				join_rows(H_ovov_ovjv().t(), H_ovoa_ovjv().t(), H_oviv_ovjv())
+		);
+	};
+
+	return join_cols(join_rows(H11(), H12()), join_rows(H21(), H22()));
 }
 
 sp_mat SIAM::N_cisnd() {
-	return join<sp_mat>( {
-			{ N_gnd_gnd()      , N_gnd_dodv()      , N_gnd_dob()      , N_gnd_jdv()      , N_gnd_ovov()      , N_gnd_ovob()      , N_gnd_ovjv()  }, 
-			{ N_gnd_dodv().t() , N_dodv_dodv()     , N_dodv_dob()     , N_dodv_jdv()     , N_dodv_ovov()     , N_dodv_ovob()     , N_dodv_ovjv() }, 
-			{ N_gnd_dob().t()  , N_dodv_dob().t()  , N_doa_dob()      , N_doa_jdv()      , N_doa_ovov()      , N_doa_ovob()      , N_doa_ovjv()  },
-			{ N_gnd_jdv().t()  , N_dodv_jdv().t()  , N_doa_jdv().t()  , N_idv_jdv()      , N_idv_ovov()      , N_idv_ovob()      , N_idv_ovjv()  }, 
-			{ N_gnd_ovov().t() , N_dodv_ovov().t() , N_doa_ovov().t() , N_idv_ovov().t() , N_ovov_ovov()     , N_ovov_ovob()     , N_ovov_ovjv() },
-			{ N_gnd_ovob().t() , N_dodv_ovob().t() , N_doa_ovob().t() , N_idv_ovob().t() , N_ovov_ovob().t() , N_ovoa_ovob()     , N_ovoa_ovjv() },
-			{ N_gnd_ovjv().t() , N_dodv_ovjv().t() , N_doa_ovjv().t() , N_idv_ovjv().t() , N_ovov_ovjv().t() , N_ovoa_ovjv().t() , N_oviv_ovjv() } 
-	} );
+	auto N11 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(N_gnd_gnd()     , N_gnd_dodv()    , N_gnd_dob()    , N_gnd_jdv()),
+				join_rows(N_gnd_dodv().t(), N_dodv_dodv()   , N_dodv_dob()   , N_dodv_jdv()),
+				join_rows(N_gnd_dob().t() , N_dodv_dob().t(), N_doa_dob()    , N_doa_jdv()),
+				join_rows(N_gnd_jdv().t() , N_dodv_jdv().t(), N_doa_jdv().t(), N_idv_jdv())
+		);
+	};
+
+	auto N21 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(N_gnd_ovov().t(), N_dodv_ovov().t(), N_doa_ovov().t(), N_idv_ovov().t()),
+				join_rows(N_gnd_ovob().t(), N_dodv_ovob().t(), N_doa_ovob().t(), N_idv_ovob().t()),
+				join_rows(N_gnd_ovjv().t(), N_dodv_ovjv().t(), N_doa_ovjv().t(), N_idv_ovjv().t())
+		);
+	};
+
+	auto N12 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(N_gnd_ovov() , N_gnd_ovob() , N_gnd_ovjv()),
+				join_rows(N_dodv_ovov(), N_dodv_ovob(), N_dodv_ovjv()),
+				join_rows(N_doa_ovov() , N_doa_ovob() , N_doa_ovjv()),
+				join_rows(N_idv_ovov() , N_idv_ovob() , N_idv_ovjv())
+		);
+	};
+
+	auto N22 = [this] () -> sp_mat {
+		return join_cols(
+				join_rows(N_ovov_ovov()    , N_ovov_ovob()    , N_ovov_ovjv()),
+				join_rows(N_ovov_ovob().t(), N_ovoa_ovob()    , N_ovoa_ovjv()),
+				join_rows(N_ovov_ovjv().t(), N_ovoa_ovjv().t(), N_oviv_ovjv())
+		);
+	};
+
+	return join_cols(join_rows(N11(), N12()), join_rows(N21(), N22()));
 }
 
 void SIAM::calc_force() {
@@ -257,8 +309,6 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	uvec d0 = uvec{0};
 	uvec dv = uvec{n_occ};
 
-	//mat ovl = join_r(mat{_vec_do}, _vec_o, mat{_vec_dv}, _vec_v).t() * 
-	//	join_r(mat{vec_do}, vec_o, mat{vec_dv}, vec_v);
 	mat ovl = join_rows(_vec_do, _vec_o, _vec_dv, _vec_v).t() * 
 		join_rows(vec_do, vec_o, vec_dv, vec_v);
 
