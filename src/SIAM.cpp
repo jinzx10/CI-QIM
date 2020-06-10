@@ -69,7 +69,7 @@ void SIAM::solve_mf() {
 		eig_sym( eigval, eigvec, conv_to<mat>::from(F(n)) );
 		return accu( square(eigvec(0, span_occ)) ) - n;
 	};
-	broydenroot(dn, n_mf, 0.7, 1e-8, 300);
+	broydenroot(dn, n_mf, 0.3, 1e-8, 200);
 	eig_sym( val_mf, vec_mf, conv_to<mat>::from(F()) );
 	E_mf = 2.0 * accu(val_mf(span_occ)) - U * n_mf * n_mf;
 }
@@ -361,7 +361,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	x.clear();
 
 	// Mib
-	inplace_trans(ovl);
+	ovl = ovl.t();
 	ns = null_qr( ovl(i, cat(dv, occ)) );
 	Ro = ovl(d0, cat(dv, occ)) * ns;
 	Ra = ovl(a, cat(dv, occ)) * ns;
@@ -370,7 +370,7 @@ mat S_exact(vec const& _vec_do, mat const& _vec_o, vec const& _vec_dv, mat const
 	mat Mib = det(ovl(occ,occ)) * (
 			x.tail_rows(x.n_rows-2).t().eval().each_col() % 
 			( ovl(a,dv) - ovl(a,occ) * solve(ovl(occ,occ), ovl(occ,dv)) ) );
-	inplace_trans(Mib);
+	Mib = Mib.t();
 	x.clear();
 	ns.clear();
 	Ro.clear();
