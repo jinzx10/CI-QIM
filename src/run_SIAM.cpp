@@ -113,7 +113,7 @@ int main(int, char**argv) {
 			x0_fil2+right_wall*(x0_fil2-xc2), density);
 	uword nx = xgrid.n_elem;
 
-	// nprocs may not be a divisor of nx
+	// nprocs in general is not a divisor of nx
 	int rem = nx % nprocs;
 
 	// if the partitioning of xgrid is exclusive
@@ -142,8 +142,8 @@ int main(int, char**argv) {
 	 * last but one position of the last proc, and the first 
 	 * position of calculation is the last position of the last proc. */
 
-	if (nprocs != 1)  // parallel scheme
-		nx_local += (id != nprocs-1 ? 1 : 0);
+	if (nprocs != 1 && id != nprocs-1)  // parallel scheme
+		nx_local += 1;
 
 	double x_init = (id == 0 ? xgrid(0)-1e-3 : xgrid(idx_start-1));
 
@@ -164,11 +164,6 @@ int main(int, char**argv) {
 	mat E_adi_local, n_cisnd_local, F_adi_local, Gamma_rlx_local, dc_adi_local;
 	cube ovl_local;
 
-	/**/
-	//mat ovl_all_local, val_all_local, ovl_all, val_all;
-	//set_size({sz_cisnd, nx_local}, ovl_all_local, val_all_local);
-
-
 	set_size(nx_local, E_mf_local, n_mf_local);
 	set_size({sz_sub, nx_local}, E_adi_local, n_cisnd_local, 
 			F_adi_local, Gamma_rlx_local);
@@ -183,9 +178,6 @@ int main(int, char**argv) {
 		set_size(nx, E_mf, n_mf);
 		set_size({sz_sub, nx}, E_adi, n_cisnd, F_adi, Gamma_rlx);
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
-
-		/**/
-		//set_size({sz_cisnd, nx}, val_all, ovl_all);
 	}
 
 	// model initialization
@@ -209,9 +201,6 @@ int main(int, char**argv) {
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
 		n_cisnd_local.col(i) = model.n_cisnd;
 
-		//ovl_all_local.col(i) = model.ovl_all;
-		//val_all_local.col(i) = model.val_all;
-
 		if (nprocs == 1) {
 			if (i == 0)
 				std::cout << std::endl << std::endl;
@@ -226,9 +215,6 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	//std::string ovlsave = savedir + "/ovl_local_" + std::to_string(id) + ".txt";
-	//ovl_local.save(ovlsave, raw_ascii);
-
 	////////////////////////////////////////////////////////////
 	//      derivative coupling sign-fixing (multi-proc)
 	////////////////////////////////////////////////////////////
@@ -238,19 +224,13 @@ int main(int, char**argv) {
 		sp_mat Q(sz_sub, sz_sub);
 
 		if (id != 0) {
-			std::string orsave = savedir + "/ovl_recv_" + std::to_string(id) + ".txt";
-			std::string sgnsave = savedir + "/sgn_" + std::to_string(id) + ".txt";
 			ovl_recv.set_size(sz_sub, sz_sub);
 			MPI_Recv(ovl_recv.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			vec sgn = (ovl_local.slice(0)/ovl_recv).eval().col(0);
+			vec sgn = ovl_local.slice(0).col(0)/ovl_recv.col(0);
 			sgn(find_nonfinite(sgn)).ones();
 			sgn(find(sgn > 0)).ones();
 			sgn(find(sgn < 0)).fill(-1.0);
 			Q.diag() = sgn;
-
-			//sgn.as_row().print();
-			//ovl_recv.save(orsave, raw_ascii);
-			//sgn.save(sgnsave, raw_ascii);
 
 			for (uword i = 0; i != nx_local; ++i) {
 				ovl_local.slice(i) = Q*ovl_local.slice(i)*Q; // inv(Q) = Q
@@ -259,10 +239,6 @@ int main(int, char**argv) {
 
 		if (id != nprocs-1) {
 			ovl_send = ovl_local.slice(nx_local-1);
-
-			//std::string ossave = savedir + "/ovl_send_" + std::to_string(id) + ".txt";
-			//ovl_send.save(ossave, raw_ascii);
-
 			MPI_Send(ovl_send.memptr(), sz_sub*sz_sub, MPI_DOUBLE, id+1, 0, MPI_COMM_WORLD);
 		}
 
@@ -282,9 +258,6 @@ int main(int, char**argv) {
 			n_cisnd_local.shed_col(nx_local-1);
 			n_mf_local.shed_row(nx_local-1);
 			E_mf_local.shed_row(nx_local-1);
-
-			//ovl_all_local.shed_col(nx_local-1);
-			//val_all_local.shed_col(nx_local-1);
 		}
 	}
 
