@@ -67,9 +67,7 @@ void FSSH_rlx::calc_dtq() {
 }
 
 double FSSH_rlx::energy() {
-	double E_kin = 0.5 * mass * v * v;
-	double E_elec = E_adi(state);
-	return E_kin + E_elec;
+	return 0.5*mass*v*v + E_adi(state);
 }
 
 cx_mat FSSH_rlx::L_rho(cx_mat const& rho_) {
@@ -106,6 +104,7 @@ void FSSH_rlx::hop() {
 
 	// (d/dt)rho_mm = -\sum_l ( g_lm + q_lm )
 	// g and q are anti-symmetric
+	// g_lm = 2*Re(T_ml*rho_lm)
 	vec g = 2.0 * real( T.row(state).t() % rho.col(state) ); // normal 
 	vec q = zeros(sz_elec); // extra damping
 	vec rho_diag = real(rho.diag());
@@ -146,8 +145,8 @@ void FSSH_rlx::hop() {
 
 		// for frustrated hops, check if the velocity should be reversed
 		// various velocity-reversal schemes
+		double F_fs;
 		switch (velo_rev) {
-			double F_fs;
 			case 0: // standard
 				F_fs = model->F(x, fs);
 				v = ( F_pes*F_fs < 0 && F_fs*v < 0 ) ? -v : v;

@@ -206,11 +206,11 @@ vec SIAM::E_bath() {
 }
 
 void SIAM::calc_Gamma_rlx() {
-	mat V_adi = vec_cisnd.tail_cols(sz_sub-1).t() * V_cpl();
 	Gamma_rlx(0) = 0;
 	for (size_t i = 1; i != sz_sub; ++i) {
-		Gamma_rlx(i) = 2.0 * arma::datum::pi * as_scalar( square(V_adi.row(i-1))
-			   * normpdf(E_bath(), val_cisnd(i), 5.0*dE_avg) );
+		Gamma_rlx(i) = 2.0 * datum::pi * dot( 
+				square( vec_cisnd.col(i).t() * V_cpl() ), 
+				normpdf(E_bath(), val_cisnd(i), 5.0*dE_avg) );
 	}
 }
 
