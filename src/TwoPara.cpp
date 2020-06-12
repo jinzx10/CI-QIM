@@ -104,14 +104,21 @@ vec TwoPara::E_bath() {
 			repmat( H_ab.diag().t(), n_occ-1, 1) );
 }
 
-void TwoPara::calc_Gamma_rlx() {
-	mat V_adi = vec_slt_cis.t() * join<sp_mat>( {
+sp_mat TwoPara::V_cpl() {
+	return join<sp_mat>( {
 			{ sp_mat( 1, (n_occ-1)*(n_vir-1) ) },
 			{ -kron( speye(n_vir-1, n_vir-1), sp_mat(H_doj) ) },
 			{ kron( sp_mat(H_dvb), speye(n_occ-1, n_occ-1) ) }
 	});
-	mat delta = gauss( val_slt_cis, E_bath().as_row(), 5.0*dE_bath_avg );
-	Gamma_rlx.tail(sz_sub-1) = 2.0 * datum::pi * sum( square(V_adi) % delta, 1 );
+}
+
+void TwoPara::calc_Gamma_rlx() {
+	Gamma_rlx(0) = 0;
+	for (size_t i = 1; i != sz_sub; ++i) {
+		Gamma_rlx(i) = 2.0 * datum::pi * dot(
+				square( vec_slt_cis.col(i-1).t() * V_cpl() ),
+				normpdf( E_bath(), val_slt_cis(i-1), 5.0*dE_bath_avg ) );
+	}
 }
 
 vec TwoPara::E_sub() {

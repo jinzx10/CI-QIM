@@ -59,7 +59,7 @@ if switch_fine:
     plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
 plt.subplot(num_fig_row, num_fig_col,3)
-plt.plot(xgrid, gamma_rlx[:,1])
+plt.plot(xgrid, gamma_rlx[:,0:3])
 if switch_fine:
     plt.plot(x_fine, gamma_fine[:,1],linestyle=':')
 

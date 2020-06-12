@@ -76,12 +76,12 @@ struct TwoPara
 
 	void				calc_Gamma_rlx();
 	arma::vec			E_bath();
+	arma::sp_mat        V_cpl();
 	arma::vec 			Gamma_rlx;
 
 	void				calc_dc_adi();
 	arma::mat			dc_adi;
 	arma::mat 			ovl_sub_raw; // raw overlap matrix of subspace adiabats (before Lowdin)
-	//arma::mat           S; // basis overlap matrix
 
 	arma::vec			E_sub();
 	arma::vec			F_sub();
