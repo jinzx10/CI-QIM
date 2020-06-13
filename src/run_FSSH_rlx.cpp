@@ -169,9 +169,8 @@ int main(int, char**argv) {
 	double sigma_x, sigma_p;
 	std::tie(sigma_x, sigma_p) = ho_wigner(mass, omega, kT);
 
-	arma::arma_rng::set_seed_random();
-
 	for (uword i = 0; i != n_trajs_local; ++i) {
+		arma::arma_rng::set_seed_random();
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 

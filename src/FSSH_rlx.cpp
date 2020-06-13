@@ -36,6 +36,7 @@ void FSSH_rlx::initialize(bool const& state0, double const& x0, double const& v0
 	E_adi = model->E(x).head(sz_elec);
 	rho_eq = boltzmann(E_adi, kT);
 	collect();
+	arma::arma_rng::set_seed_random();
 }
 
 void FSSH_rlx::evolve_nucl() {
