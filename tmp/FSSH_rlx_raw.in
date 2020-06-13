@@ -5,5 +5,5 @@ t_max T_MAX
 dtc DTC
 velo_rev VELO_REV
 fric_mode 0
-kT 0.001                  
+kT 0.00095                 
 sz_elec SZ_ELEC
