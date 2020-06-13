@@ -121,7 +121,7 @@ void FSSH_rlx::hop() {
 	// determine the final state of hopping
 	vec P_cumu = cumsum(P_hop);
 	uword fs = 0;
-	arma_rng::set_seed_random();
+	//arma_rng::set_seed_random();
 	double r = randu();
 	double dr = 0.0;
 	for (fs = 0; fs != sz_elec; ++fs) {
