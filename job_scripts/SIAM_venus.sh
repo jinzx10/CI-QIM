@@ -1,16 +1,16 @@
 #!/bin/bash
 
 #PBS -N SIAM
-#PBS -l nodes=5:ppn=12
+#PBS -l nodes=4:ppn=24
 #PBS -q batch
-#PBS -l walltime=48:00:00
+#PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -o /home/jinzx10/job/CI-QIM/log/SIAM.out
 
 JOBROOT=/home/jinzx10/job/CI-QIM/
 cd ${JOBROOT}
 
-DOS_BASE=( 1000    1000	   2000    4000    8000    16000   24000   10000   10000    10000)
+DOS_BASE=( 1000    1000	   2000    4000    8000    16000   24000   24000   24000    24000)
 HYBRID=(   0.0128  0.0064  0.0032  0.0016  0.0008  0.0004  0.0002  0.0001  0.00005  0.000025)
 DOX_PEAK=( 20      30      40      60      100     140     200     300     450      700)
 DOX_WIDTH=(5       4       3       2       1.4     1       0.7     0.5     0.3      0.2)
@@ -38,5 +38,5 @@ do
 	touch ${SAVEDIR}/run_SIAM.log
 	echo $(date) >> ${SAVEDIR}/run_SIAM.log
 
-	mpirun -np 60 ${JOBROOT}/bin/run_SIAM ${SAVEDIR}/SIAM.in >> ${SAVEDIR}/run_SIAM.log 2>&1
+	mpirun -np 96 ${JOBROOT}/bin/run_SIAM ${SAVEDIR}/SIAM.in >> ${SAVEDIR}/run_SIAM.log 2>&1
 done
