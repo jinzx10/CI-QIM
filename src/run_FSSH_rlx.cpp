@@ -27,7 +27,7 @@ int main(int, char**argv) {
 
 	std::string readdir;
 	std::string savedir;
-	int n_trajs;
+	uword n_trajs;
 	double t_max;
 	double dtc;
 	int velo_rev;
@@ -75,10 +75,16 @@ int main(int, char**argv) {
 		Gamma.reshape(sz_elec, sz_x);
 		dc.reshape(sz_elec*sz_elec, sz_x);
 
+	}
+
+	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
+			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh);
+
+	if (id == nprocs-1) {
 		std::cout << "data are read from: " << readdir << std::endl
 			<< "data will be saved to: " << savedir << std::endl
 			<< "# of trajectories = " << n_trajs << std::endl
-			<< "maximun time = " << t_max << std::endl
+			<< "max time = " << t_max << std::endl
 			<< "classical time step size = " << dtc << std::endl
 			<< "# of classical steps = " << t_max/dtc << std::endl
 			<< "velocity reversal mode: " << velo_rev << std::endl
@@ -92,13 +98,6 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
-	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
-			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh);
-
-	////////////////////////////////////////////////////////////
-	//					Model Setup
-	////////////////////////////////////////////////////////////
-
 	if (id != root) {
 		set_size(sz_x, xgrid);
 		set_size(sz_elec, sz_x, pes, force, Gamma);
@@ -107,11 +106,16 @@ int main(int, char**argv) {
 
 	bcast(root, xgrid, pes, force, Gamma, dc);
 
+	////////////////////////////////////////////////////////////
+	//					Model Setup
+	////////////////////////////////////////////////////////////
+
 	ModelInterp model(xgrid, pes.t(), force.t(), dc.t(), Gamma.t());
 
-	////////////////////////////////////////////////////////////
-	//			Fewest-Switches Surface Hopping
-	////////////////////////////////////////////////////////////
+	if (id == nprocs-1) {
+		std::cout << "Model Initialized" << std::endl;
+	}
+
 	uword ntc = t_max / dtc;
 	vec time_grid;
 	if (id == root) {
@@ -137,6 +141,11 @@ int main(int, char**argv) {
 	FSSH_rlx fssh_rlx( &model, mass, dtc, ntc, 
 			kT, fric_gamma, velo_rev, sz_elec_fssh);
 
+	if (id == nprocs-1) {
+		std::cout << "FSSH_rlx Initialized" << std::endl 
+			<< "# of local trajectories (last proc) = " << n_trajs_local << std::endl;
+	}
+
 	// local data
 	mat x_local, v_local, E_local;
 	umat state_local, num_fhop_local;
@@ -151,7 +160,7 @@ int main(int, char**argv) {
 	umat num_fhop;
 
 	if (id == root) {
-		set_size(ntc, n_trajs, x_t, v_t, state_t, E_t);
+		set_size({ntc, n_trajs}, x_t, v_t, state_t, E_t);
 		set_size(n_trajs, num_fhop);
 		sw.run();
 	}
