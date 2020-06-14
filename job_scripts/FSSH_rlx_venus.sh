@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -N run_FSSH_rlx
-#PBS -l nodes=2:ppn=48
+#PBS -l nodes=5:ppn=48
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -o /home/jinzx10/job/CI-QIM/log/FSSH_rlx.out
@@ -17,10 +17,10 @@ LOG="run_fssh_rlx.log"
 SZ_ELEC=30
 VELO_REV=0
 
-for i in {0..7}
+for i in {0..0}
 do
 	READDIR=${JOBROOT}/data/TwoPara/hybrid_Gamma/${HYBRID[i]}
-	SAVEDIR=${JOBROOT}/data/TwoPara/hybrid_Gamma/${HYBRID[i]}/vr0
+	SAVEDIR=${JOBROOT}/data/TwoPara/hybrid_Gamma/${HYBRID[i]}/vr0_2
 	mkdir -p ${SAVEDIR}
 	rm -f ${SAVEDIR}/${LOG}
 
@@ -38,7 +38,7 @@ do
 	touch ${SAVEDIR}/${LOG}
 	echo $(date) >> ${SAVEDIR}/${LOG}
 
-	mpirun -np 96 ${JOBROOT}/bin/run_FSSH_rlx ${SAVEDIR}/FSSH_rlx.in >> ${SAVEDIR}/${LOG} 2>&1
+	mpirun -np 240 ${JOBROOT}/bin/run_FSSH_rlx ${SAVEDIR}/FSSH_rlx.in >> ${SAVEDIR}/${LOG} 2>&1
 done
 
 

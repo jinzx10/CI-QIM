@@ -212,6 +212,7 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	//					collect data
 	////////////////////////////////////////////////////////////
+	MPI_Barrier(MPI_COMM_WORLD);
 	if (id == root) {
 		arma_save<raw_binary>(savedir, time_grid, "t.dat");
 		std::cout << "start collecting data..." << std::endl;
