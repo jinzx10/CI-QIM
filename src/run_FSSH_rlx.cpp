@@ -214,6 +214,7 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	if (id == root) {
 		arma_save<raw_binary>(savedir, time_grid, "t.dat");
+		std::cout << "start collecting data..." << std::endl;
 	}
 
 	gatherv(root, state_local, state_t);
