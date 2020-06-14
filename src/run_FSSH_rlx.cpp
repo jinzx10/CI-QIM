@@ -209,12 +209,54 @@ int main(int, char**argv) {
 			<< std::endl;
 	}
 
+	////////////////////////////////////////////////////////////
+	//					collect data
+	////////////////////////////////////////////////////////////
+	if (id == root) {
+		arma_save<raw_binary>(savedir, time_grid, "t.dat");
+	}
+
+	gatherv(root, state_local, state_t);
+	state_local.clear();
+	if (id == root) {
+		mkdir(savedir);
+		arma_save<raw_binary>(savedir, state_t, "state_t.dat");
+		state_t.clear();
+	}
+
+	gatherv(root, x_local, x_t);
+	x_local.clear();
+	if (id == root) {
+		arma_save<raw_binary>(savedir, x_t, "x_t.dat");
+		x_t.clear();
+	}
+
+	gatherv(root, v_local, v_t);
+	v_local.clear();
+	if (id == root) {
+		arma_save<raw_binary>(savedir, v_t, "v_t.dat");
+		v_t.clear();
+	}
+
+	gatherv(root, E_local, E_t);
+	E_local.clear();
+	if (id == root) {
+		arma_save<raw_binary>(savedir, E_t, "E_t.dat");
+		E_t.clear();
+	}
+
+	gatherv(root, num_fhop_local, num_fhop);
+	num_fhop_local.clear();
+	if (id == root) {
+		arma_save<raw_binary>(savedir, num_fhop, "num_fhop.dat");
+		num_fhop.clear();
+		sw.report("program end");
+	}
+
+	/*
 	gatherv(root, state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t,
 			num_fhop_local, num_fhop);
 
-	////////////////////////////////////////////////////////////
-	//					save data
-	////////////////////////////////////////////////////////////
 	if (id == root) {
 		mkdir(savedir);
 		arma_save<raw_binary>( savedir,
@@ -227,6 +269,7 @@ int main(int, char**argv) {
 		);
 		sw.report("program end");
 	}
+	*/
 
 	MPI_Finalize();
 
