@@ -218,6 +218,7 @@ int main(int, char**argv) {
 	}
 
 	gatherv(root, state_local, state_t);
+	MPI_Barrier(MPI_COMM_WORLD);
 	state_local.clear();
 	if (id == root) {
 		mkdir(savedir);
@@ -226,6 +227,7 @@ int main(int, char**argv) {
 	}
 
 	gatherv(root, x_local, x_t);
+	MPI_Barrier(MPI_COMM_WORLD);
 	x_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, x_t, "x_t.dat");
@@ -233,6 +235,7 @@ int main(int, char**argv) {
 	}
 
 	gatherv(root, v_local, v_t);
+	MPI_Barrier(MPI_COMM_WORLD);
 	v_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, v_t, "v_t.dat");
@@ -240,6 +243,7 @@ int main(int, char**argv) {
 	}
 
 	gatherv(root, E_local, E_t);
+	MPI_Barrier(MPI_COMM_WORLD);
 	E_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, E_t, "E_t.dat");
@@ -247,6 +251,7 @@ int main(int, char**argv) {
 	}
 
 	gatherv(root, num_fhop_local, num_fhop);
+	MPI_Barrier(MPI_COMM_WORLD);
 	num_fhop_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, num_fhop, "num_fhop.dat");
