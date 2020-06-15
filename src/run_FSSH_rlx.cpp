@@ -218,45 +218,60 @@ int main(int, char**argv) {
 		std::cout << "start collecting data..." << std::endl;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, state_local, state_t);
 	MPI_Barrier(MPI_COMM_WORLD);
 	state_local.clear();
 	if (id == root) {
 		mkdir(savedir);
 		arma_save<raw_binary>(savedir, state_t, "state_t.dat");
+		std::cout << "state saved" << std::endl;
 		state_t.clear();
+		std::cout << "state cleared" << std::endl;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, x_local, x_t);
 	MPI_Barrier(MPI_COMM_WORLD);
 	x_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, x_t, "x_t.dat");
+		std::cout << "x saved" << std::endl;
 		x_t.clear();
+		std::cout << "x cleared" << std::endl;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, v_local, v_t);
 	MPI_Barrier(MPI_COMM_WORLD);
 	v_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, v_t, "v_t.dat");
+		std::cout << "v saved" << std::endl;
 		v_t.clear();
+		std::cout << "v cleared" << std::endl;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, E_local, E_t);
 	MPI_Barrier(MPI_COMM_WORLD);
 	E_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, E_t, "E_t.dat");
+		std::cout << "E saved" << std::endl;
 		E_t.clear();
+		std::cout << "E cleared" << std::endl;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, num_fhop_local, num_fhop);
 	MPI_Barrier(MPI_COMM_WORLD);
 	num_fhop_local.clear();
 	if (id == root) {
 		arma_save<raw_binary>(savedir, num_fhop, "num_fhop.dat");
+		std::cout << "fhop saved" << std::endl;
 		num_fhop.clear();
+		std::cout << "fhop cleared" << std::endl;
 		sw.report("program end");
 	}
 
