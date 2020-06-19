@@ -7,4 +7,5 @@ velo_rev 0
 fric_mode 0
 kT 0.00095                 
 sz_elec 30
+has_rlx 0
 
