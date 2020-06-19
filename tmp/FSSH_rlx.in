@@ -1,9 +1,10 @@
-readdir ~/job/CI-QIM/data/TwoPara/hybrid_Gamma/test
-savedir ~/job/CI-QIM/data/TwoPara/hybrid_Gamma/test
-n_trajs 20
-t_max 1.5e6
-dtc 15
+readdir /home/jinzx10/job/CI-QIM/data/TwoPara/hybrid_Gamma/0.0128
+savedir /home/jinzx10/job/CI-QIM/data/TwoPara/hybrid_Gamma/0.0128/test
+n_trajs 120
+t_max 1.5e3
+dtc 30
 velo_rev 0
 fric_mode 0
-kT 0.001                  
+kT 0.00095                 
+sz_elec 30
 
