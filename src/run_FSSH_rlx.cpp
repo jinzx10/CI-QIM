@@ -23,7 +23,7 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	std::string input_file;
 	Parser p({"readdir", "savedir", "n_trajs", "t_max", "dtc", 
-			"velo_rev", "fric_mode", "kT", "sz_elec"});
+			"velo_rev", "fric_mode", "kT", "sz_elec", "has_rlx"});
 
 	std::string readdir;
 	std::string savedir;
@@ -31,6 +31,7 @@ int main(int, char**argv) {
 	double t_max;
 	double dtc;
 	int velo_rev;
+	int has_rlx;
 	int fric_mode;
 	double kT;
 	uword sz_elec_fssh; // used in FSSH
@@ -49,7 +50,7 @@ int main(int, char**argv) {
 
 		p.parse(input_file);
 		p.pour(readdir, savedir, n_trajs, t_max, dtc, 
-				velo_rev, fric_mode, kT, sz_elec_fssh);
+				velo_rev, fric_mode, kT, sz_elec_fssh, has_rlx);
 
 		readdir = expand_leading_tilde(readdir);
 		savedir = expand_leading_tilde(savedir);
@@ -78,7 +79,7 @@ int main(int, char**argv) {
 	}
 
 	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
-			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh);
+			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx);
 
 	if (id == nprocs-1) {
 		std::cout << "data are read from: " << readdir << std::endl
@@ -95,6 +96,7 @@ int main(int, char**argv) {
 			<< "x0_mpt = " << x0_mpt << std::endl
 			<< "size of electronic basis: " << sz_elec << std::endl
 			<< "size of electronic basis for FSSH: " << sz_elec_fssh << std::endl
+			<< "has relaxation: " << has_rlx << std::endl
 			<< std::endl;
 	}
 
@@ -139,7 +141,7 @@ int main(int, char**argv) {
 		n_trajs_local += 1;
 
 	FSSH_rlx fssh_rlx( &model, mass, dtc, ntc, 
-			kT, fric_gamma, velo_rev, sz_elec_fssh);
+			kT, fric_gamma, velo_rev, has_rlx, sz_elec_fssh);
 
 	if (id == nprocs-1) {
 		std::cout << "FSSH_rlx Initialized" << std::endl 

@@ -12,10 +12,11 @@ FSSH_rlx::FSSH_rlx(
 		double			const&		kT_,
 		double			const&		gamma_,
 		int				const&		velo_rev_,
+		int 			const& 		has_rlx_,
 		uword 			const& 		sz_elec_
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
-	kT(kT_), gamma(gamma_), velo_rev(velo_rev_),
+	kT(kT_), gamma(gamma_), velo_rev(velo_rev_), has_rlx(has_rlx_),
 	x(0), v(0), F_pes(0), 
 	sz_elec( (sz_elec_ && sz_elec_ <= model->sz_elec) ?  
 			sz_elec_ : model->sz_elec ), 
@@ -71,6 +72,7 @@ double FSSH_rlx::energy() {
 	return 0.5*mass*v*v + E_adi(state);
 }
 
+/*
 cx_mat FSSH_rlx::L_rho(cx_mat const& rho_) {
 	cx_mat tmp = zeros<cx_mat>(sz_elec, sz_elec);
 
@@ -85,11 +87,47 @@ cx_mat FSSH_rlx::L_rho(cx_mat const& rho_) {
 	tmp.col(0) = 0.5 * Gamma_rlx % rho_.col(0);
 	return tmp;
 }
+*/
+
+cx_mat FSSH_rlx::Lindblad(cx_mat const& rho_) {
+	cx_mat tmp = zeros<cx_mat>(sz_elec, sz_elec);
+	vec f = 1.0 / (exp( (E_adi-E_adi(0))/kT ) + 1.0);
+	vec rho_diag = real(rho_.diag());
+	vec sqrtf1f = sqrt( f % (1.0-f) );
+	vec G1f = Gamma_rlx % (1.0-f);
+	double Gf = accu(Gamma_rlx % f);
+
+	tmp(0,0) += accu( Gamma_rlx % (1.0-f) % rho_diag );
+	tmp.diag() += Gamma_rlx % f * rho_(0,0);
+	tmp.row(0) += (Gamma_rlx % sqrtf1f % rho_.col(0)).as_row();
+	tmp.col(0) += Gamma_rlx % sqrtf1f % (rho_.row(0).as_col());
+
+	tmp.row(0) -= 0.5 * Gf * rho_.row(0);
+	tmp.col(0) -= 0.5 * Gf * rho_.col(0);
+	tmp -= 0.5 * bcast_plus(G1f, G1f.as_row()) % rho_;
+
+	/*
+	sp_mat L(sz_elec, sz_elec); // jump operator
+	double f = 0.0;
+	for (size_t i = 1; i != sz_elec; ++i) {
+		L.zeros();
+		f = 1.0 / ( exp((E_adi(i)-E_adi(0))/kT) + 1.0 );
+		L(0,i) = sqrt(1.0-f);
+		L(i,0) = sqrt(f);
+		tmp += Gamma_rlx(i) * (L*rho_*L.t() - 0.5*(L.t()*L*rho_+rho_*(L.t()*L)));
+	}
+	*/
+	return tmp;
+}
 
 cx_mat FSSH_rlx::drho_dt(cx_mat const& rho_) {
 	std::complex<double> I{0.0, 1.0};
-	return -I * rho_ % bcast_minus(E_adi, E_adi.t())
-		- (T * rho_ - rho_ * T) - L_rho(rho_);
+	if (has_rlx)
+		return -I * rho_ % bcast_minus(E_adi, E_adi.t())
+		   	- (T * rho_ - rho_ * T) + Lindblad(rho_);
+	return -I * rho_ % bcast_minus(E_adi, E_adi.t()) - (T * rho_ - rho_ * T);
+	//return -I * rho_ % bcast_minus(E_adi, E_adi.t())
+	//	- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
 void FSSH_rlx::evolve_elec() {

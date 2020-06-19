@@ -14,6 +14,7 @@ struct FSSH_rlx
 			double			const& 		kT_,
 			double 			const& 		gamma_,
 			int				const&		velo_rev_,
+			int 			const&		has_rlx_ = 1, 
 			arma::uword 	const& 		sz_elec_ = 0
 	);
 
@@ -28,7 +29,8 @@ struct FSSH_rlx
 	void						clear();
 
 	double						energy();
-	arma::cx_mat				L_rho(arma::cx_mat const& rho_);
+	//arma::cx_mat				L_rho(arma::cx_mat const& rho_);
+	arma::cx_mat 				Lindblad(arma::cx_mat const& rho_);
 	arma::cx_mat				drho_dt(arma::cx_mat const& rho_);
 
 	ModelInterp*	const		model;
@@ -40,6 +42,7 @@ struct FSSH_rlx
 	double			const		kT;
 	double 			const		gamma; // external phononic friction
 	int				const		velo_rev; // velocity reversal type
+	int 			const 		has_rlx; // has Lindblad term of not
 
 	double						x;
 	double 						v;
