@@ -26,6 +26,7 @@ nx = len(xgrid)
 dc_adi = np.reshape(dc_adi, (nx,-1))
 gamma_rlx = np.reshape(gamma_rlx, (nx,-1))
 pes = np.reshape(pes, (nx,-1))
+n_imp = np.reshape(n_imp, (nx,-1))
 force = np.reshape(force, (nx,-1))
 
 if switch_fine:
@@ -42,7 +43,7 @@ if switch_fine:
     pes_fine = np.reshape(pes_fine, (nx_fine,-1))
 
 plt.subplot(num_fig_row, num_fig_col,1)
-plt.plot(xgrid, n_imp) 
+plt.plot(xgrid, n_imp[:,[0,1,2,3]]) 
 
 plt.subplot(num_fig_row, num_fig_col,2)
 plt.plot(xgrid, dc_adi[:,1]) 
