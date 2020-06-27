@@ -156,22 +156,18 @@ int main(int, char** argv) {
 	}
 
 	// local variables and their initialization
-	vec n_imp_local;
-	mat E_adi_local, F_adi_local, dc_adi_local, Gamma_rlx_local;
+	mat E_adi_local, F_adi_local, n_imp_local, dc_adi_local, Gamma_rlx_local;
 	cube ovl_local;
 
-	set_size(nx_local, n_imp_local);
-	set_size({sz_sub, nx_local}, E_adi_local, F_adi_local, Gamma_rlx_local);
+	set_size({sz_sub, nx_local}, E_adi_local, F_adi_local, n_imp_local, Gamma_rlx_local);
 	set_size({sz_sub*sz_sub, nx_local}, dc_adi_local);
 	set_size({sz_sub, sz_sub, nx_local}, ovl_local);
 
 	// global variables (used by proc 0)
-	vec n_imp;
-	mat E_adi, F_adi, dc_adi, Gamma_rlx;
+	mat E_adi, F_adi, n_imp, dc_adi, Gamma_rlx;
 
 	if (id == root) {
-		set_size(nx, n_imp);
-		set_size({sz_sub, nx}, E_adi, F_adi, Gamma_rlx);
+		set_size({sz_sub, nx}, E_adi, F_adi, n_imp, Gamma_rlx);
 		set_size({sz_sub*sz_sub, nx}, dc_adi);
 	}
 
@@ -192,7 +188,7 @@ int main(int, char** argv) {
 		dc_adi_local.col(i) = model.dc_adi.as_col();
 		ovl_local.slice(i) = model.ovl_sub_raw;
 		Gamma_rlx_local.col(i) = model.Gamma_rlx;
-		n_imp_local(i) = model.ev_n;
+		n_imp_local.col(i) = model.n_imp_sub;
 
 		if (nprocs == 1) {
 			if (i == 0)
@@ -245,7 +241,7 @@ int main(int, char** argv) {
 			F_adi_local.shed_col(nx_local-1);
 			Gamma_rlx_local.shed_col(nx_local-1);
 			dc_adi_local.shed_col(nx_local-1);
-			n_imp_local.shed_row(nx_local-1);
+			n_imp_local.shed_col(nx_local-1);
 		}
 	}
 

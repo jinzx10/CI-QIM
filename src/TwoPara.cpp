@@ -54,6 +54,7 @@ void TwoPara::set_and_calc(double const& x_) {
 
 	solve_slt_cis();
 
+	calc_n_imp();
 	calc_force();
 	calc_Gamma_rlx();
 	calc_dc_adi();
@@ -97,6 +98,15 @@ void TwoPara::solve_slt_cis() {
 			{ H_dov_jdv.t(), H_doa_jdv.t(), H_idv_jdv} } );
 
 	eigs_sym( val_slt_cis, vec_slt_cis, H_slt_cis, sz_sub-1, "sa");
+}
+
+void TwoPara::calc_n_imp() {
+	vec N_slt_cis_diag(n_occ+n_vir-1, fill::zeros);
+	double Ndv = vec_dv(0)*vec_dv(0);
+	N_slt_cis_diag(0) = Ndv;
+	N_slt_cis_diag.tail(n_occ-1).fill(Ndv);
+	n_imp_sub = join_cols(vec{ev_n}, 
+			sum(square(vec_slt_cis).eval().each_col() % N_slt_cis_diag, 0).as_col() );
 }
 
 vec TwoPara::E_bath() {

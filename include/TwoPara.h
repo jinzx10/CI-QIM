@@ -70,6 +70,9 @@ struct TwoPara
 	arma::vec			val_slt_cis;
 	arma::mat 			vec_slt_cis;
 
+	void 				calc_n_imp();
+	arma::vec 			n_imp_sub;
+
 	void				calc_force();
 	double				F_gnd;
 	arma::vec			F_slt_cis;
