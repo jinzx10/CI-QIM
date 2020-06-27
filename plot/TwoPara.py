@@ -47,7 +47,7 @@ plt.plot(xgrid, n_imp)
 plt.subplot(num_fig_row, num_fig_col,2)
 plt.plot(xgrid, dc_adi[:,1]) 
 plt.plot(xgrid, dc_adi[:,2]) 
-plt.plot(xgrid, dc_adi[:,3]) 
+plt.plot(xgrid, dc_adi[:,29]) 
 if switch_fine:
     plt.plot(x_fine, dc_fine[:,1],linestyle='--')
 
@@ -57,7 +57,7 @@ if switch_fine:
     plt.plot(x_fine, gamma_fine[:,1],linestyle=':')
 
 plt.subplot(num_fig_row, num_fig_col,4)
-plt.plot(xgrid, pes[:,[0,1]])
+plt.plot(xgrid, pes[:,0:10:1])
 if switch_fine:
     plt.plot(x_fine,pes_fine[:,[0,1]],linestyle='--')
 
