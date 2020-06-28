@@ -64,6 +64,7 @@ struct FSSH_rlx
 	arma::vec					v_t;
 	arma::vec					E_t;
 	arma::uvec					state_t;
+	arma::vec 					n_t;
 	arma::uword					num_frustrated_hops;
 };
 

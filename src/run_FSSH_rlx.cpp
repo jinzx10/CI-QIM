@@ -41,7 +41,7 @@ int main(int, char**argv) {
 	double x0_mpt;
 	
 	vec xgrid;
-	mat pes, force, Gamma, dc;
+	mat pes, n_imp, force, Gamma, dc;
 	uword sz_x, sz_elec; // sz_elec of data
 
 	std::string paramfile;
@@ -63,6 +63,7 @@ int main(int, char**argv) {
 		arma_load( readdir, 
 				xgrid, "xgrid.dat",
 				pes, "E_adi.dat",
+				n_imp, "n_imp.dat",
 				force, "F_adi.dat",
 				Gamma, "Gamma_rlx.dat",
 				dc, "dc_adi.dat"
@@ -72,6 +73,7 @@ int main(int, char**argv) {
 		sz_elec = pes.n_elem / sz_x;
 
 		pes.reshape(sz_elec, sz_x);
+		n_imp.reshape(sz_elec, sz_x);
 		force.reshape(sz_elec, sz_x);
 		Gamma.reshape(sz_elec, sz_x);
 		dc.reshape(sz_elec*sz_elec, sz_x);
@@ -102,17 +104,17 @@ int main(int, char**argv) {
 
 	if (id != root) {
 		set_size(sz_x, xgrid);
-		set_size(sz_elec, sz_x, pes, force, Gamma);
+		set_size(sz_elec, sz_x, pes, n_imp, force, Gamma);
 		set_size(sz_elec*sz_elec, sz_x, dc);
 	}
 
-	bcast(root, xgrid, pes, force, Gamma, dc);
+	bcast(root, xgrid, pes, n_imp, force, Gamma, dc);
 
 	////////////////////////////////////////////////////////////
 	//					Model Setup
 	////////////////////////////////////////////////////////////
 
-	ModelInterp model(xgrid, pes.t(), force.t(), dc.t(), Gamma.t());
+	ModelInterp model(xgrid, pes.t(), n_imp.t(), force.t(), dc.t(), Gamma.t());
 
 	if (id == nprocs-1) {
 		std::cout << "Model Initialized" << std::endl;
@@ -149,20 +151,21 @@ int main(int, char**argv) {
 	}
 
 	// local data
-	mat x_local, v_local, E_local;
+	mat x_local, v_local, E_local, n_local;
 	umat state_local, num_fhop_local;
-	set_size({ntc, n_trajs_local}, x_local, v_local, state_local, E_local);
+	set_size({ntc, n_trajs_local}, x_local, n_local, v_local, state_local, E_local);
 	set_size(n_trajs_local, num_fhop_local);
 
 	// global data
 	mat x_t;
+	mat n_t;
 	mat v_t;
 	mat E_t;
 	umat state_t;
 	umat num_fhop;
 
 	if (id == root) {
-		set_size({ntc, n_trajs}, x_t, v_t, state_t, E_t);
+		set_size({ntc, n_trajs}, x_t, n_t, v_t, state_t, E_t);
 		set_size(n_trajs, num_fhop);
 		sw.run();
 	}
@@ -192,6 +195,7 @@ int main(int, char**argv) {
 		fssh_rlx.propagate();
 
 		x_local.col(i) = fssh_rlx.x_t;
+		n_local.col(i) = fssh_rlx.n_t;
 		v_local.col(i) = fssh_rlx.v_t;
 		state_local.col(i) = fssh_rlx.state_t;
 		E_local.col(i) = fssh_rlx.E_t;
@@ -221,15 +225,14 @@ int main(int, char**argv) {
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	gatherv(root, state_local, state_t);
+	gatherv(root, n_local, n_t);
 	MPI_Barrier(MPI_COMM_WORLD);
-	state_local.clear();
+	n_local.clear();
 	if (id == root) {
-		mkdir(savedir);
-		arma_save<raw_binary>(savedir, state_t, "state_t.dat");
-		std::cout << "state saved" << std::endl;
-		state_t.clear();
-		std::cout << "state cleared" << std::endl;
+		arma_save<raw_binary>(savedir, n_t, "n_t.dat");
+		std::cout << "n saved" << std::endl;
+		n_t.clear();
+		std::cout << "n cleared" << std::endl;
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -241,6 +244,18 @@ int main(int, char**argv) {
 		std::cout << "x saved" << std::endl;
 		x_t.clear();
 		std::cout << "x cleared" << std::endl;
+	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
+	gatherv(root, state_local, state_t);
+	MPI_Barrier(MPI_COMM_WORLD);
+	state_local.clear();
+	if (id == root) {
+		mkdir(savedir);
+		arma_save<raw_binary>(savedir, state_t, "state_t.dat");
+		std::cout << "state saved" << std::endl;
+		state_t.clear();
+		std::cout << "state cleared" << std::endl;
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
