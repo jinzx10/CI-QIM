@@ -15,17 +15,16 @@ datadir=filedir+'/../data/TwoPara/hybrid_Gamma/'+sys.argv[1]+'/'
 nfit=500
 
 t = np.fromfile(datadir+'t.dat')
-x_t = np.fromfile(datadir+'x_t.dat')
-xc = 8.00011
+n_t = np.fromfile(datadir+'n_t.dat')
 
 nt = len(t)
 
 stride=nt//nfit
 
-x_t = np.reshape(x_t, (-1, nt))
-n_traj = np.size(x_t, 0)
+n_t = np.reshape(n_t, (-1, nt))
+n_traj = np.size(n_t, 0)
 
-n_left = np.sum((x_t < xc), 0) / n_traj;
+n_left = 1.0 - np.sum(n_t, 0) / n_traj;
 
 t=t[::stride]
 n_left=n_left[::stride]
