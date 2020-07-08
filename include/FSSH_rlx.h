@@ -14,6 +14,7 @@ struct FSSH_rlx
 			double			const& 		kT_,
 			double 			const& 		gamma_,
 			int				const&		velo_rev_,
+			int 			const& 		velo_rescale_,
 			int 			const&		has_rlx_ = 1, 
 			arma::uword 	const& 		sz_elec_ = 0
 	);
@@ -42,6 +43,7 @@ struct FSSH_rlx
 	double			const		kT;
 	double 			const		gamma; // external phononic friction
 	int				const		velo_rev; // velocity reversal type
+	int				const		velo_rescale; // velocity rescaling mode
 	int 			const 		has_rlx; // has Lindblad term of not
 
 	double						x;

@@ -12,11 +12,13 @@ FSSH_rlx::FSSH_rlx(
 		double			const&		kT_,
 		double			const&		gamma_,
 		int				const&		velo_rev_,
+		int 			const& 		velo_rescale_,
 		int 			const& 		has_rlx_,
 		uword 			const& 		sz_elec_
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
-	kT(kT_), gamma(gamma_), velo_rev(velo_rev_), has_rlx(has_rlx_),
+	kT(kT_), gamma(gamma_),
+	velo_rev(velo_rev_), velo_rescale(velo_rescale_), has_rlx(has_rlx_),
 	x(0), v(0), F_pes(0), 
 	sz_elec( (sz_elec_ && sz_elec_ <= model->sz_elec) ?  
 			sz_elec_ : model->sz_elec ), 
@@ -175,10 +177,23 @@ void FSSH_rlx::hop() {
 	if ( fs == sz_elec ) // no hopping happens
 		return;
 
+	bool hop_from_dc;
+	if (g(fs) <= 0 && q(fs) > 0) {
+		hop_from_dc = false;
+	} else if (g(fs) > 0 && q(fs) <= 0) {
+		hop_from_dc = true;
+	} else { // g>0, q>0
+		hop_from_dc = ( dr/P_hop(fs) < g(fs)/(g(fs)+q(fs)) );
+	}
+
 	// hopping happens, check if frustrated or not
 	double dE = E_adi(fs) - E_adi(state);
 	if ( fs < state || dE <= 0.5 * mass * v * v ) { // successful hops
-		v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
+		// velo_rescale
+		// 0: normal velocity rescaling by energy conservation
+		// 1: no rescaling if hop comes from electronic relaxation
+		if ( velo_rescale == 0 || (velo_rescale == 1 && hop_from_dc) )
+			v = v_sign * std::sqrt(v*v - 2.0 * dE / mass);
 		state = fs;
 		has_hop = true;
 	} else { // frustrated hops
@@ -192,8 +207,8 @@ void FSSH_rlx::hop() {
 				F_fs = model->F(x, fs);
 				v = ( F_pes*F_fs < 0 && F_fs*v < 0 ) ? -v : v;
 				break;
-			case 1: // partial, check whether hop from dc or rlx
-				if ( g(fs) > 0 && (dr/P_hop(fs) < g(fs)/(g(fs)+q(fs))) ) {
+			case 1: // partial, only reverse when hop_from_dc is true
+				if ( hop_from_dc ) {
 					F_fs = model->F(x, fs);
 					v = ( F_pes*F_fs < 0 && F_fs*v < 0 ) ? -v : v;
 				}
