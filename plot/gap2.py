@@ -54,20 +54,21 @@ r2 = [
     1.068948500984437,
 ]
 
+gap = [
+        1.08786553e-02,
+        6.02852273e-03, 
+        3.26299749e-03, 
+        1.74323612e-03,
+        9.22066829e-04, 
+        4.83982984e-04, 
+        2.53057302e-04, 
+        1.32797295e-04,
+        7.08120317e-05, 
+        3.90797301e-05,
+        ]
 gamma_str = [ float(e) for e in folders ]
 gamma = np.asarray(gamma_str)
-gap = np.zeros(len(gamma_str))
 
-r22 = [ 2*v for v in r2 ]
-
-for ig in range(0,len(gamma_str)):
-    diri = datadir + folders[ig] + '_new/'
-    xgrid = np.fromfile(diri + 'xgrid.dat')
-    pes = np.fromfile(diri + 'E_adi.dat')
-    nx = len(xgrid)
-    pes = np.reshape(pes, (nx, -1))
-    E01 = pes[:,1] - pes[:,0]
-    gap[ig] = np.amin(E01)
 
 ############################################################
 #                     plot
