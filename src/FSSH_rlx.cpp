@@ -149,12 +149,15 @@ void FSSH_rlx::hop() {
 	vec g = 2.0 * real( T.row(state).t() % rho.col(state) ); // normal 
 	vec q = zeros(sz_elec); // extra damping
 	vec rho_diag = real(rho.diag());
-	vec f = 1.0 / (exp( (E_adi-E_adi(0))/kT ) + 1.0);
-	if (state) {
-		//q(0) = Gamma_rlx(state) * ( rho_diag(state) - rho_eq(state) );
-		q(0) = Gamma_rlx(state) * ( rho_diag(state)*(1.0-f(state)) - rho_diag(0)*f(state) );
-	} else {
-		q = -Gamma_rlx % ( rho_diag % (1.0-f) - rho_diag(0)*f );
+
+	if (has_rlx) {
+		vec f = 1.0 / (exp( (E_adi-E_adi(0))/kT ) + 1.0);
+		if (state) {
+			//q(0) = Gamma_rlx(state) * ( rho_diag(state) - rho_eq(state) );
+			q(0) = Gamma_rlx(state) * ( rho_diag(state)*(1.0-f(state)) - rho_diag(0)*f(state) );
+		} else {
+			q = -Gamma_rlx % ( rho_diag % (1.0-f) - rho_diag(0)*f );
+		}
 	}
 
 	// hopping probability to each state
