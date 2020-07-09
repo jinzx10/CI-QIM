@@ -22,8 +22,19 @@ int main(int, char**argv) {
 	//					Read-in Stage
 	////////////////////////////////////////////////////////////
 	std::string input_file;
-	Parser p({"readdir", "savedir", "n_trajs", "t_max", "dtc", 
-			"velo_rev", "fric_mode", "kT", "sz_elec", "has_rlx"});
+	Parser p({
+			"readdir", 
+			"savedir", 
+			"n_trajs", 
+			"t_max", 
+			"dtc", 
+			"velo_rev", 
+			"velo_rescale", 
+			"fric_mode", 
+			"kT", 
+			"sz_elec", 
+			"has_rlx"
+	});
 
 	std::string readdir;
 	std::string savedir;
@@ -31,6 +42,7 @@ int main(int, char**argv) {
 	double t_max;
 	double dtc;
 	int velo_rev;
+	int velo_rescale;
 	int has_rlx;
 	int fric_mode;
 	double kT;
@@ -50,7 +62,7 @@ int main(int, char**argv) {
 
 		p.parse(input_file);
 		p.pour(readdir, savedir, n_trajs, t_max, dtc, 
-				velo_rev, fric_mode, kT, sz_elec_fssh, has_rlx);
+				velo_rev, velo_rescale, fric_mode, kT, sz_elec_fssh, has_rlx);
 
 		readdir = expand_leading_tilde(readdir);
 		savedir = expand_leading_tilde(savedir);
@@ -80,7 +92,7 @@ int main(int, char**argv) {
 
 	}
 
-	bcast(root, n_trajs, t_max, dtc, velo_rev, fric_mode, kT, 
+	bcast(root, n_trajs, t_max, dtc, velo_rev, velo_rescale, fric_mode, kT, 
 			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx);
 
 	if (id == nprocs-1) {
@@ -91,6 +103,7 @@ int main(int, char**argv) {
 			<< "classical time step size = " << dtc << std::endl
 			<< "# of classical steps = " << t_max/dtc << std::endl
 			<< "velocity reversal mode: " << velo_rev << std::endl
+			<< "velocity rescaling mode: " << velo_rescale << std::endl
 			<< "friction mode: " << fric_mode << std::endl
 			<< "temperature: " << kT << std::endl
 			<< "omega = " << omega << std::endl
@@ -143,7 +156,7 @@ int main(int, char**argv) {
 		n_trajs_local += 1;
 
 	FSSH_rlx fssh_rlx( &model, mass, dtc, ntc, 
-			kT, fric_gamma, velo_rev, has_rlx, sz_elec_fssh);
+			kT, fric_gamma, velo_rev, velo_rescale, has_rlx, sz_elec_fssh);
 
 	if (id == nprocs-1) {
 		std::cout << "FSSH_rlx Initialized" << std::endl 
