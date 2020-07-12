@@ -192,17 +192,18 @@ int main(int, char**argv) {
 		double x0 = x0_mpt + arma::randn()*sigma_x;
 		double v0 = arma::randn() * sigma_p / mass;
 
-		vec rho_eq = boltzmann(model.E(x0), kT);
-		cx_mat rho0 = zeros<cx_mat>(sz_elec, sz_elec);
+		vec rho_eq = boltzmann(model.E(x0).head(sz_elec_fssh), kT);
+		cx_mat rho0 = zeros<cx_mat>(sz_elec_fssh, sz_elec_fssh);
 		rho0.diag() = conv_to<cx_vec>::from(rho_eq);
 
 		uword state0 = 0;
 		vec P_cumu = cumsum(rho_eq);
 		double r = randu();
-		for (state0 = 0; state0 != sz_elec; ++state0) {
+		for (state0 = 0; state0 != sz_elec_fssh; ++state0) {
 			if (r < P_cumu(state0))	
 				break;
 		}
+
 
 		fssh_rlx.initialize(state0, x0, v0, rho0);
 		fssh_rlx.propagate();

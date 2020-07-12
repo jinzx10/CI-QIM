@@ -54,7 +54,7 @@ void FSSH_rlx::evolve_nucl() {
 	v += 0.5 * (a + a_new) * dtc;
 
 	// time derivative coupling matrix
-	T = v * model->dc(x);
+	T = v * model->dc(x)(span(0, sz_elec-1), span(0, sz_elec-1));
 	
 	// instantaneous adiabatic energies and equilibrium population
 	E_adi = model->E(x).head(sz_elec);
