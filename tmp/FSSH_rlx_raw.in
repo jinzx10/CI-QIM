@@ -4,6 +4,8 @@ n_trajs NUM_TRAJS
 t_max T_MAX
 dtc DTC
 velo_rev VELO_REV
-fric_mode 0
+velo_rescale VELO_RESCALE
+fric_mode FRIC_MODE
 kT 0.00095                 
 sz_elec SZ_ELEC
+has_rlx HAS_RLX
