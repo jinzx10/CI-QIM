@@ -16,7 +16,8 @@ struct FSSH_rlx
 			int				const&		velo_rev_,
 			int 			const& 		velo_rescale_,
 			int 			const&		has_rlx_ = 1, 
-			arma::uword 	const& 		sz_elec_ = 0
+			arma::uword 	const& 		sz_elec_ = 0,
+			int 			const& 		n_only_ = 1
 	);
 
 	void						initialize(bool const& state0_, double const& x0_, double const& v0_, arma::cx_mat const& rho0_);
@@ -45,6 +46,7 @@ struct FSSH_rlx
 	int				const		velo_rev; // velocity reversal type
 	int				const		velo_rescale; // velocity rescaling mode
 	int 			const 		has_rlx; // has Lindblad term of not
+	int 			const 		n_only;
 
 	double						x;
 	double 						v;
@@ -62,11 +64,11 @@ struct FSSH_rlx
 	bool						has_hop; // for previous quantum steps
 
 	// data storage for one trajectory
+	arma::vec 					n_t;
 	arma::vec					x_t;
 	arma::vec					v_t;
 	arma::vec					E_t;
 	arma::uvec					state_t;
-	arma::vec 					n_t;
 	arma::uword					num_frustrated_hops;
 };
 

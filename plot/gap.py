@@ -54,28 +54,29 @@ r2 = [
     1.068948500984437,
 ]
 
+gap = [
+        1.08786553e-02,
+        6.02852273e-03, 
+        3.26299749e-03, 
+        1.74323612e-03,
+        9.22066829e-04, 
+        4.83982984e-04, 
+        2.53057302e-04, 
+        1.32797295e-04,
+        7.08120317e-05, 
+        3.90797301e-05,
+        ]
 gamma_str = [ float(e) for e in folders ]
 gamma = np.asarray(gamma_str)
-gap = np.zeros(len(gamma_str))
 
-r22 = [ 2*v for v in r2 ]
-
-for ig in range(0,len(gamma_str)):
-    diri = datadir + folders[ig] + '_new/'
-    xgrid = np.fromfile(diri + 'xgrid.dat')
-    pes = np.fromfile(diri + 'E_adi.dat')
-    nx = len(xgrid)
-    pes = np.reshape(pes, (nx, -1))
-    E01 = pes[:,1] - pes[:,0]
-    gap[ig] = np.amin(E01)
 
 ############################################################
 #                     plot
 ############################################################
 
 sz_label=20
-sz_legend=12
-sz_tick=16
+sz_legend=20
+sz_tick=20
 sz_title=20
 
 fig = plt.figure(1)
@@ -83,11 +84,14 @@ ax = fig.add_subplot(111)
 ax.plot(gamma,gap,'-o',label=r"gap (numerical)")
 ax.plot(gamma,gamma,'-o',label=r"y=x")
 #ax.plot(gamma,r*gamma,'-o',label='crude est.')
-#ax.plot(gamma,r2*gamma,'-o',label='better est.')
+ax.plot(gamma,r2*gamma,'-o',label='Appendix A')
 #ax.plot(gamma,r22*gamma,'-o',label='2xbetter est.')
 
 ax.set_xscale('log')
 ax.set_yscale('log')
+
+ax.set_xlim((1e-5, 2e-2))
+ax.set_ylim((1e-5, 2e-2))
 
 ax.set_xlabel(r"$\Gamma$", fontsize=sz_label)
 ax.set_ylabel(r"gap", fontsize=sz_label)
@@ -99,9 +103,9 @@ ax.tick_params(which='minor',axis='y', direction='in', labelsize=sz_tick)
 
 ax.legend(fontsize=sz_legend)
 
-fig.set_size_inches(5.5,5)
+fig.set_size_inches(6, 5.5)
 fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-#plt.savefig('/home/zuxin/Dropbox/Anderson_Holstein/article2/tex/figs/gap.png', dpi=600)
+plt.savefig('/home/zuxin/Dropbox/FSSH_rlx/tex/figs/gap.png', dpi=600)
 
 print(gap)
 #print(gamma)

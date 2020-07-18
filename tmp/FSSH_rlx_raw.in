@@ -9,3 +9,4 @@ fric_mode FRIC_MODE
 kT 0.00095                 
 sz_elec SZ_ELEC
 has_rlx HAS_RLX
+n_only N_ONLY

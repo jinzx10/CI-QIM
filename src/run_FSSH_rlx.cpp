@@ -33,7 +33,8 @@ int main(int, char**argv) {
 			"fric_mode", 
 			"kT", 
 			"sz_elec", 
-			"has_rlx"
+			"has_rlx",
+			"n_only"
 	});
 
 	std::string readdir;
@@ -44,6 +45,7 @@ int main(int, char**argv) {
 	int velo_rev;
 	int velo_rescale;
 	int has_rlx;
+	int n_only;
 	int fric_mode;
 	double kT;
 	uword sz_elec_fssh; // used in FSSH
@@ -62,7 +64,7 @@ int main(int, char**argv) {
 
 		p.parse(input_file);
 		p.pour(readdir, savedir, n_trajs, t_max, dtc, 
-				velo_rev, velo_rescale, fric_mode, kT, sz_elec_fssh, has_rlx);
+				velo_rev, velo_rescale, fric_mode, kT, sz_elec_fssh, has_rlx, n_only);
 
 		readdir = expand_leading_tilde(readdir);
 		savedir = expand_leading_tilde(savedir);
@@ -93,7 +95,7 @@ int main(int, char**argv) {
 	}
 
 	bcast(root, n_trajs, t_max, dtc, velo_rev, velo_rescale, fric_mode, kT, 
-			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx);
+			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx, n_only);
 
 	if (id == nprocs-1) {
 		std::cout << "data are read from: " << readdir << std::endl
@@ -112,6 +114,7 @@ int main(int, char**argv) {
 			<< "size of electronic basis: " << sz_elec << std::endl
 			<< "size of electronic basis for FSSH: " << sz_elec_fssh << std::endl
 			<< "has relaxation: " << has_rlx << std::endl
+			<< "store n only: " << (bool)n_only << std::endl
 			<< std::endl;
 	}
 
@@ -156,7 +159,7 @@ int main(int, char**argv) {
 		n_trajs_local += 1;
 
 	FSSH_rlx fssh_rlx( &model, mass, dtc, ntc, 
-			kT, fric_gamma, velo_rev, velo_rescale, has_rlx, sz_elec_fssh);
+			kT, fric_gamma, velo_rev, velo_rescale, has_rlx, sz_elec_fssh, n_only);
 
 	if (id == nprocs-1) {
 		std::cout << "FSSH_rlx Initialized" << std::endl 
@@ -166,8 +169,11 @@ int main(int, char**argv) {
 	// local data
 	mat x_local, v_local, E_local, n_local;
 	umat state_local, num_fhop_local;
-	set_size({ntc, n_trajs_local}, x_local, n_local, v_local, state_local, E_local);
-	set_size(n_trajs_local, num_fhop_local);
+	n_local.set_size(ntc, n_trajs_local);
+	num_fhop_local.set_size(n_trajs_local);
+	if (!n_only) {
+		set_size({ntc, n_trajs_local}, x_local, v_local, state_local, E_local);
+	}
 
 	// global data
 	mat x_t;
@@ -178,8 +184,11 @@ int main(int, char**argv) {
 	umat num_fhop;
 
 	if (id == root) {
-		set_size({ntc, n_trajs}, x_t, n_t, v_t, state_t, E_t);
-		set_size(n_trajs, num_fhop);
+		n_t.set_size(ntc, n_trajs);
+		num_fhop.set_size(n_trajs);
+		if (!n_only) {
+			set_size({ntc, n_trajs}, x_t, v_t, state_t, E_t);
+		}
 		sw.run();
 	}
 
@@ -208,12 +217,15 @@ int main(int, char**argv) {
 		fssh_rlx.initialize(state0, x0, v0, rho0);
 		fssh_rlx.propagate();
 
-		x_local.col(i) = fssh_rlx.x_t;
 		n_local.col(i) = fssh_rlx.n_t;
-		v_local.col(i) = fssh_rlx.v_t;
-		state_local.col(i) = fssh_rlx.state_t;
-		E_local.col(i) = fssh_rlx.E_t;
 		num_fhop_local(i) = fssh_rlx.num_frustrated_hops;
+
+		if (!n_only) {
+			x_local.col(i) = fssh_rlx.x_t;
+			v_local.col(i) = fssh_rlx.v_t;
+			state_local.col(i) = fssh_rlx.state_t;
+			E_local.col(i) = fssh_rlx.E_t;
+		}
 
 		if (nprocs == 1) {
 			if (i == 0)
@@ -234,8 +246,8 @@ int main(int, char**argv) {
 	////////////////////////////////////////////////////////////
 	MPI_Barrier(MPI_COMM_WORLD);
 	if (id == root) {
+		sw.report("start collecting data");
 		arma_save<raw_binary>(savedir, time_grid, "t.dat");
-		std::cout << "start collecting data..." << std::endl;
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -250,51 +262,6 @@ int main(int, char**argv) {
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	gatherv(root, x_local, x_t);
-	MPI_Barrier(MPI_COMM_WORLD);
-	x_local.clear();
-	if (id == root) {
-		arma_save<raw_binary>(savedir, x_t, "x_t.dat");
-		std::cout << "x saved" << std::endl;
-		x_t.clear();
-		std::cout << "x cleared" << std::endl;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-	gatherv(root, state_local, state_t);
-	MPI_Barrier(MPI_COMM_WORLD);
-	state_local.clear();
-	if (id == root) {
-		mkdir(savedir);
-		arma_save<raw_binary>(savedir, state_t, "state_t.dat");
-		std::cout << "state saved" << std::endl;
-		state_t.clear();
-		std::cout << "state cleared" << std::endl;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-	gatherv(root, v_local, v_t);
-	MPI_Barrier(MPI_COMM_WORLD);
-	v_local.clear();
-	if (id == root) {
-		arma_save<raw_binary>(savedir, v_t, "v_t.dat");
-		std::cout << "v saved" << std::endl;
-		v_t.clear();
-		std::cout << "v cleared" << std::endl;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
-	gatherv(root, E_local, E_t);
-	MPI_Barrier(MPI_COMM_WORLD);
-	E_local.clear();
-	if (id == root) {
-		arma_save<raw_binary>(savedir, E_t, "E_t.dat");
-		std::cout << "E saved" << std::endl;
-		E_t.clear();
-		std::cout << "E cleared" << std::endl;
-	}
-
-	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, num_fhop_local, num_fhop);
 	MPI_Barrier(MPI_COMM_WORLD);
 	num_fhop_local.clear();
@@ -303,9 +270,58 @@ int main(int, char**argv) {
 		std::cout << "fhop saved" << std::endl;
 		num_fhop.clear();
 		std::cout << "fhop cleared" << std::endl;
-		sw.report("program end");
 	}
 
+	if (!n_only) {
+		MPI_Barrier(MPI_COMM_WORLD);
+		gatherv(root, x_local, x_t);
+		MPI_Barrier(MPI_COMM_WORLD);
+		x_local.clear();
+		if (id == root) {
+			arma_save<raw_binary>(savedir, x_t, "x_t.dat");
+			std::cout << "x saved" << std::endl;
+			x_t.clear();
+			std::cout << "x cleared" << std::endl;
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		gatherv(root, state_local, state_t);
+		MPI_Barrier(MPI_COMM_WORLD);
+		state_local.clear();
+		if (id == root) {
+			mkdir(savedir);
+			arma_save<raw_binary>(savedir, state_t, "state_t.dat");
+			std::cout << "state saved" << std::endl;
+			state_t.clear();
+			std::cout << "state cleared" << std::endl;
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		gatherv(root, v_local, v_t);
+		MPI_Barrier(MPI_COMM_WORLD);
+		v_local.clear();
+		if (id == root) {
+			arma_save<raw_binary>(savedir, v_t, "v_t.dat");
+			std::cout << "v saved" << std::endl;
+			v_t.clear();
+			std::cout << "v cleared" << std::endl;
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		gatherv(root, E_local, E_t);
+		MPI_Barrier(MPI_COMM_WORLD);
+		E_local.clear();
+		if (id == root) {
+			arma_save<raw_binary>(savedir, E_t, "E_t.dat");
+			std::cout << "E saved" << std::endl;
+			E_t.clear();
+			std::cout << "E cleared" << std::endl;
+		}
+	}
+
+	if (id == root) {
+		sw.report("program end");
+	}
 	/*
 	gatherv(root, state_local, state_t, x_local, x_t, v_local, v_t, E_local, E_t,
 			num_fhop_local, num_fhop);

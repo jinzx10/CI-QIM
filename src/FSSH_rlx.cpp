@@ -14,11 +14,12 @@ FSSH_rlx::FSSH_rlx(
 		int				const&		velo_rev_,
 		int 			const& 		velo_rescale_,
 		int 			const& 		has_rlx_,
-		uword 			const& 		sz_elec_
+		uword 			const& 		sz_elec_,
+		int 			const& 		n_only_
 ):
 	model(model_), mass(mass_), dtc(dtc_), ntc(ntc_),
 	kT(kT_), gamma(gamma_),
-	velo_rev(velo_rev_), velo_rescale(velo_rescale_), has_rlx(has_rlx_),
+	velo_rev(velo_rev_), velo_rescale(velo_rescale_), has_rlx(has_rlx_), n_only(n_only_),
 	x(0), v(0), F_pes(0), 
 	sz_elec( (sz_elec_ && sz_elec_ <= model->sz_elec) ?  
 			sz_elec_ : model->sz_elec ), 
@@ -26,9 +27,15 @@ FSSH_rlx::FSSH_rlx(
 	state(0), rho(zeros<cx_mat>(sz_elec, sz_elec)),
 	E_adi(zeros(sz_elec)), rho_eq(zeros(sz_elec)),
 	counter(0), has_hop(false),
-	x_t(zeros(ntc)), v_t(zeros(ntc)), E_t(zeros(ntc)),
-	state_t(zeros<uvec>(ntc)), n_t(zeros(ntc)), num_frustrated_hops(0)
-{}
+	n_t(zeros(ntc)), num_frustrated_hops(0)
+{
+	if (!n_only) {
+		x_t = zeros(ntc); 
+		v_t = zeros(ntc); 
+		E_t = zeros(ntc);
+		state_t = zeros<uvec>(ntc); 
+	}
+}
 
 void FSSH_rlx::initialize(bool const& state0, double const& x0, double const& v0, cx_mat const& rho0) {
 	clear();
@@ -74,22 +81,6 @@ double FSSH_rlx::energy() {
 	return 0.5*mass*v*v + E_adi(state);
 }
 
-/*
-cx_mat FSSH_rlx::L_rho(cx_mat const& rho_) {
-	cx_mat tmp = zeros<cx_mat>(sz_elec, sz_elec);
-
-	vec L_diag = zeros(sz_elec);
-	vec rho_diag = real(rho_.diag());
-
-	L_diag = Gamma_rlx % ( rho_diag - rho_eq );
-	L_diag(0) = -accu( L_diag(span_exc) );
-
-	tmp.diag() = conv_to<cx_vec>::from(L_diag);
-	tmp.row(0) = 0.5 * Gamma_rlx.t() % rho_.row(0);
-	tmp.col(0) = 0.5 * Gamma_rlx % rho_.col(0);
-	return tmp;
-}
-*/
 
 cx_mat FSSH_rlx::Lindblad(cx_mat const& rho_) {
 	cx_mat tmp = zeros<cx_mat>(sz_elec, sz_elec);
@@ -128,8 +119,6 @@ cx_mat FSSH_rlx::drho_dt(cx_mat const& rho_) {
 		return -I * rho_ % bcast_minus(E_adi, E_adi.t())
 		   	- (T * rho_ - rho_ * T) + Lindblad(rho_);
 	return -I * rho_ % bcast_minus(E_adi, E_adi.t()) - (T * rho_ - rho_ * T);
-	//return -I * rho_ % bcast_minus(E_adi, E_adi.t())
-	//	- (T * rho_ - rho_ * T) - L_rho(rho_);
 }
 
 void FSSH_rlx::evolve_elec() {
@@ -223,21 +212,27 @@ void FSSH_rlx::hop() {
 }
 
 void FSSH_rlx::collect() {
-	state_t(counter) = state;
-	x_t(counter) = x;
-	v_t(counter) = v;
-	E_t(counter) = energy();
 	n_t(counter) = model->n_imp(x, state);
+
+	if (!n_only) {
+		state_t(counter) = state;
+		x_t(counter) = x;
+		v_t(counter) = v;
+		E_t(counter) = energy();
+	}
 }
 
 void FSSH_rlx::clear() {
 	counter = 0;
-	x_t.zeros();
-	v_t.zeros();
-	state_t.zeros();
-	E_t.zeros();
 	n_t.zeros();
 	num_frustrated_hops = 0;
+
+	if (!n_only) {
+		x_t.zeros();
+		v_t.zeros();
+		state_t.zeros();
+		E_t.zeros();
+	}
 }
 
 void FSSH_rlx::propagate() {
