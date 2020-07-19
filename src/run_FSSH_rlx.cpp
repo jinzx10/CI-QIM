@@ -95,7 +95,8 @@ int main(int, char**argv) {
 	}
 
 	bcast(root, n_trajs, t_max, dtc, velo_rev, velo_rescale, fric_mode, kT, 
-			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx, n_only);
+			omega, mass, x0_mpt, sz_x, sz_elec, sz_elec_fssh, has_rlx, n_only,
+			readdir, savedir);
 
 	if (id == nprocs-1) {
 		std::cout << "data are read from: " << readdir << std::endl
@@ -250,6 +251,21 @@ int main(int, char**argv) {
 		arma_save<raw_binary>(savedir, time_grid, "t.dat");
 	}
 
+	MPI_Status status;
+
+	MPI_File fh_n;
+	std::string file_n = savedir + "/n_t.dat";
+	MPI_File_open(MPI_COMM_WORLD, file_n.c_str(), MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh_n);
+	MPI_File_write_ordered(fh_n, n_local.memptr(), n_local.n_elem, MPI_DOUBLE, &status);
+	MPI_File_close(&fh_n);
+
+	MPI_File fh_fhop;
+	std::string file_fhop = savedir + "/num_fhop.dat";
+	MPI_File_open(MPI_COMM_WORLD, file_fhop.c_str(), MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh_fhop);
+	MPI_File_write_ordered(fh_fhop, num_fhop_local.memptr(), num_fhop_local.n_elem, MPI_UNSIGNED_LONG_LONG, &status);
+	MPI_File_close(&fh_fhop);
+
+	/*
 	MPI_Barrier(MPI_COMM_WORLD);
 	gatherv(root, n_local, n_t);
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -271,6 +287,7 @@ int main(int, char**argv) {
 		num_fhop.clear();
 		std::cout << "fhop cleared" << std::endl;
 	}
+	*/
 
 	if (!n_only) {
 		MPI_Barrier(MPI_COMM_WORLD);
