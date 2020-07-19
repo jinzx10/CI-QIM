@@ -185,12 +185,14 @@ int main(int, char**argv) {
 	umat num_fhop;
 
 	if (id == root) {
+		/*
 		n_t.set_size(ntc, n_trajs);
 		num_fhop.set_size(n_trajs);
 		if (!n_only) {
 			set_size({ntc, n_trajs}, x_t, v_t, state_t, E_t);
 		}
-		sw.run();
+		*/
+		sw.run("ready");
 	}
 
 	// Wigner quasi-probability distribution of harmonic oscillator
