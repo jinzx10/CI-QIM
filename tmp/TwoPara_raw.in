@@ -10,6 +10,6 @@ hybrid HYBRID
 dox_base 5
 dox_peak DOX_PEAK
 dox_width DOX_WIDTH
-sz_sub 30
+sz_sub SZ_SUB 
 left_wall 3
 right_wall 2
