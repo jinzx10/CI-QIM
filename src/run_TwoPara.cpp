@@ -25,9 +25,23 @@ int main(int, char** argv) {
 	//                  Read-in Stage
 	////////////////////////////////////////////////////////////
 	std::string file_path;
-	Parser p({"savedir", "x0_mpt", "x0_fil", "omega", "mass", "dE_fil",
-			"W", "dos_base", "hybrid", "dox_base", "dox_peak", "dox_width",
-			"sz_sub", "left_wall", "right_wall"});
+	Parser p({
+			"savedir", 
+			"x0_mpt", 
+			"x0_fil", 
+			"omega", 
+			"mass", 
+			"dE_fil",
+			"W", 
+			"dos_base", 
+			"hybrid", 
+			"dox_base",
+			//"dox_peak",  // use Gamma to estimate xgrid near crossing
+			//"dox_width",
+			"sz_sub", 
+			"left_wall", 
+			"right_wall"
+	});
 
 	std::string savedir;
 	double dos_base = 0.0;
@@ -48,9 +62,23 @@ int main(int, char** argv) {
 	if (id == root) {
 		readargs(argv, file_path);
 		p.parse(file_path);
-		p.pour(savedir, x0_mpt, x0_fil, omega, mass, dE_fil,
-				W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
-				sz_sub, left_wall, right_wall);
+		p.pour(
+				savedir, 
+				x0_mpt, 
+				x0_fil, 
+				omega, 
+				mass, 
+				dE_fil,
+				W, 
+				dos_base, 
+				hybrid, 
+				dox_base, 
+				//dox_peak, 
+				//dox_width, 
+				sz_sub, 
+				left_wall, 
+				right_wall
+		);
 
 		savedir = expand_leading_tilde(savedir);
 
@@ -64,15 +92,28 @@ int main(int, char** argv) {
 			<< "bath density of states = " << dos_base << std::endl
 			<< "hybridization = " << hybrid << std::endl
 			<< "base density of x grid = " << dox_base << std::endl
-			<< "peak density of x grid = " << dox_peak << std::endl
-			<< "width of x grid peak density = " << dox_width << std::endl
+			//<< "peak density of x grid = " << dox_peak << std::endl
+			//<< "width of x grid peak density = " << dox_width << std::endl
 			<< "size of subspace adiabats = " << sz_sub << std::endl
 			<< std::endl;
 	}
 
-	bcast(root, x0_mpt, x0_fil, omega, mass, dE_fil,
-			W, dos_base, hybrid, dox_base, dox_peak, dox_width, 
-			sz_sub, left_wall, right_wall);
+	bcast( root, 
+			x0_mpt, 
+			x0_fil, 
+			omega, 
+			mass, 
+			dE_fil,
+			W, 
+			dos_base, 
+			hybrid, 
+			dox_base, 
+			//dox_peak, 
+			//dox_width, 
+			sz_sub, 
+			left_wall, 
+			right_wall
+	);
 
 	////////////////////////////////////////////////////////////
 	//                  Two-Parabola model
@@ -83,10 +124,6 @@ int main(int, char** argv) {
 	auto E_fil = [&] (double const& x) { return 0.5 * mass * omega* omega* 
 		(x - x0_fil) * (x - x0_fil) + dE_fil;};
 	auto E_imp = [&] (double const& x) { return E_fil(x) - E_mpt(x); };
-
-	double xc = 0.0;
-	broydenroot(E_imp, xc);
-
 
 	// bath
 	auto bathdos = [&] (double) { return dos_base; };
@@ -102,12 +139,22 @@ int main(int, char** argv) {
 	vec cpl = sqrt(hybrid/2.0/datum::pi/dos);
 
 	// x grid; more samplings around the crossing point
-	auto density = [&] (double x) { 
-		return dox_base + dox_peak * gauss(x, xc, dox_width);
+	double xc = 0.0;
+	broydenroot(E_imp, xc);
+
+	auto E_tmp = [&] (double const& x) { return E_imp(x) - hybrid; };
+	double xw = 0.0;
+	broydenroot(E_tmp, xw);
+	xw = std::abs(xw - xc);
+
+	dox_peak = 20.0 / xw;
+	dox_width = 10.0 * xw;
+	auto dox = [&] (double x) { 
+		return dox_base + dox_peak * gauss(x, xc, dox_width) * dox_width * datum::sqrt2pi;
 	};
 
 	vec xgrid = grid( x0_mpt-left_wall*(xc-x0_mpt),
-			x0_fil+right_wall*(x0_fil-xc), density );
+			x0_fil+right_wall*(x0_fil-xc), dox, xc);
 	uword nx = xgrid.n_elem;
 
 	// nprocs may not be a divisor of nx
