@@ -170,12 +170,16 @@ void FSSH_rlx::hop() {
 		return;
 
 	bool hop_from_dc;
+	double r2 = randu();
 	if (g(fs) <= 0 && q(fs) > 0) {
 		hop_from_dc = false;
 	} else if (g(fs) > 0 && q(fs) <= 0) {
 		hop_from_dc = true;
-	} else { // g>0, q>0
-		hop_from_dc = ( dr/P_hop(fs) < g(fs)/(g(fs)+q(fs)) );
+	} else if (g(fs) > 0 && q(fs) > 0) {
+		//hop_from_dc = ( dr/P_hop(fs) < g(fs)/(g(fs)+q(fs)) );
+		hop_from_dc = ( r2 < g(fs)/(g(fs)+q(fs)) );
+	} else {
+		std::cout << "hop: error" << std::endl;
 	}
 
 	// hopping happens, check if frustrated or not
